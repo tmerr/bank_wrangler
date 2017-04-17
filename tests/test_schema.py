@@ -1,4 +1,4 @@
-import schema
+from bank_wrangler import schema
 from decimal import Decimal
 
 

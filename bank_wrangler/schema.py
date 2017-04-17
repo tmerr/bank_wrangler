@@ -33,6 +33,9 @@ class Entry(object):
             return NotImplemented
         return self.value < other.value
 
+    def __hash__(self):
+        return self.value.__hash__()
+
 
 class Date(Entry):
     """

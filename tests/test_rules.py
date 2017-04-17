@@ -1,35 +1,26 @@
-import rules
-import schema
+from bank_wrangler import rules, schema
 from collections import OrderedDict
+from nose.tools import assert_equals
 
 
-def test_parser_success():
-    result0 = rules.parse('hello >= 1992/06/25')
-    assert result0.success
-    assert result0.ast
-    assert result0.error is None
-
-    result1 = rules.parse('hello >= $32.49')
-    assert result1.success
-    assert result1.ast
-    assert result1.error is None
-
-    result2 = rules.parse('hello >= "ayyy sup \\" fam", wat = $30.25')
-    assert result2.success
-    assert result2.ast
-    assert result2.error is None
+def test_parse_success():
+    ok0 = rules.parse('hello >= 1992/06/25')[0].ok
+    ok1 = rules.parse('hello >= $32.49')[0].ok
+    ok2 = rules.parse('hello >= "ayyy sup \\" fam", wat = $30.25')[0].ok
 
 
-def test_parser_fail():
-    result0 = rules.parse('hello hello hello')
-    assert not result0.success
-    assert result0.ast is None
-    assert len(result0.error) > 0
+def test_parse_fail_1():
+    err0 = rules.parse('hello hello hello')[0].err
+    assert len(err0) > 0
 
-    result1 = rules.parse('HJI^&*()%^&&&')
-    assert not result1.success
-    assert result1.ast is None
-    assert len(result1.error) > 0
+    err1 = rules.parse('HJI^&*()%^&&&')[0].err
+    assert len(err1) > 0
+
+
+def test_parse_fail_2():
+    text = 'first == "match this", blah blah try to parse me!'
+    err0 = rules.parse(text)[0].err
+    assert len(err0) > 0
 
 
 COLUMNS = OrderedDict({
@@ -38,49 +29,49 @@ COLUMNS = OrderedDict({
 })
 
 
-def test_subclassifier_pass():
+def test_compile_1():
     text = 'first == "match this", category = "bucket"'
-    ok, classify, err = rules.build_subclassifier(COLUMNS, text)
-    assert ok
+    ast = rules.parse_and_check(COLUMNS, text)
+    f = rules.compile(ast)
     transaction = [
         schema.String('match this'),
         schema.Dollars('$32.53'),
     ]
-    assert(classify(transaction).value == 'bucket')
+    expected = (
+        {'category': schema.String('bucket')},
+        {},
+    )
+    assert_equals(f(transaction), expected)
 
 
-def test_subclassifier_fail():
-    text = 'first == "match this", blah blah try to parse me!'
-    ok, classify, err = rules.build_subclassifier(COLUMNS, text)
-    assert not ok
-    assert len(err) > 0
-
-
-def test_classifier_pass():
+def test_compile_2():
     text = '''
         first == "match this", category = "A"
         second >= $10.24, category = "B"
     '''
-    classify, errors = rules.build_classifier(COLUMNS, text)
-    expected = {
-        1: schema.String("A"),
-        2: schema.String("B"),
-    }
+    ast = rules.parse_and_check(COLUMNS, text)
+    f = rules.compile(ast)
     transaction = [
         schema.String('match this'),
         schema.Dollars('$32.53'),
     ]
-    assert classify(transaction) == expected
+    expected = (
+        {},
+        {'category': {schema.String('A'), schema.String('B')}},
+    )
+    assert f(transaction) == expected
 
 
-def test_classifier_fail():
+def test_compile_no_match():
     text = '''
         first == "match this", category = "A"
         second >= $10.24, category = "B"
     '''
-    classify, errors = rules.build_classifier(COLUMNS, text)
+    ast = rules.parse_and_check(COLUMNS, text)
+    f = rules.compile(ast)
     transaction = [
         schema.String('dont match me'),
         schema.Dollars('$0.53'),
     ]
-    assert classify(transaction) == {}
+    expected = ({}, {})
+    assert f(transaction) == expected
