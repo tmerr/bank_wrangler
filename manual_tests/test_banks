@@ -1,0 +1,60 @@
+#!/usr/bin/env python3
+
+
+from bank_wrangler import aggregate
+from getpass import getpass
+from io import StringIO
+
+
+def cli_config(empty):
+    populated = []
+    for field in empty:
+        hidden, label, _ = field
+        inp = getpass if hidden else input
+        value = inp('  {}: '.format(label))
+        populated.append(field._replace(value=value))
+    return populated
+
+
+def pick(bank):
+    print('Configure: {}'.format(bank.name()))
+    cfg = cli_config(bank.empty_config())
+    print('Done.\n')
+
+    print('Testing bank.fetch:')
+    fileobj = StringIO()
+    bank.fetch(cfg, fileobj)
+    fileobj.seek(0)
+    print(fileobj.read())
+    fileobj.seek(0)
+    input('Done. Press enter to continue.')
+
+    print('\nTesting bank.transactions:')
+    model = bank.transactions(fileobj)
+    print(model)
+    print('Done.')
+
+
+def run():
+    while True:
+        choices = list(enumerate(aggregate.banks()))
+        print('Banks:')
+        for i, bank in choices:
+            print('  {}. {}'.format(i, bank.name()))
+        print('  q. Quit')
+        choice = input('Choice: ')
+        if choice == 'q':
+            break
+        try:
+            selected = choices[int(choice)][1]
+        except (ValueError, IndexError):
+            print()
+            continue
+        else:
+            print()
+            pick(selected)
+            return
+
+
+if __name__ == '__main__':
+    run()
