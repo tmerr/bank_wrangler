@@ -105,10 +105,26 @@ def fetch(config, fileobj):
 def transactions(fileobj):
     result = schema.TransactionModel(schema.COLUMNS)
     lines = list(csv.reader(fileobj))[1:]
-    for _, date, _, description, amount, _, _, _ in lines:
+    for _, date, account_type, description, _, _, credit, debit in lines:
+        is_debit = len(debit) > 0 and len(credit) == 0
+        is_credit = len(credit) > 0 and len(debit) == 0
+        a = 'Citizens {}'.format(account_type)
+        b = 'Universe'
+
+        if is_debit:
+            assert not is_credit
+            from_to = [a, b]
+            amount = debit
+        else:
+            assert is_credit
+            from_to = [b, a]
+            amount = credit
+
         month, day, year = map(int, date.split('/'))
         result.ingest_row(
             schema.String(name()),
+            schema.String(from_to[0]),
+            schema.String(from_to[1]),
             schema.Date(year, month, day),
             schema.String(description),
             schema.Dollars(amount)

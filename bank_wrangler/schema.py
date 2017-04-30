@@ -68,7 +68,9 @@ class Dollars(Entry):
     Dollar quantities are formatted $\d+(.\d{2})?
     """
     def __init__(self, value):
-        super().__init__(Decimal(str(value).lstrip('$')))
+        value = Decimal(str(value).replace(',', '').lstrip('$'))
+        assert value >= 0
+        super().__init__(value)
 
     def __str__(self):
         return '$' + str(self.value)
@@ -109,6 +111,8 @@ class TransactionModel():
 # Don't directly refer to this from the core code, to encourage orthogonality.
 COLUMNS = OrderedDict((
     ('source', String),
+    ('from', String),
+    ('to', String),
     ('date', Date),
     ('description', String),
     ('amount', Dollars),
