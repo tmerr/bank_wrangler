@@ -130,3 +130,8 @@ def transactions(fileobj):
             schema.Dollars(amount)
         )
     return result
+
+
+def accounts(fileobj):
+    lines = list(csv.reader(fileobj))[1:]
+    return { 'Citizens {}'.format(account_type) for _, _, account_type, *_ in lines }

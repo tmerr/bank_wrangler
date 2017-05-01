@@ -31,7 +31,14 @@ def pick(bank):
 
     print('\nTesting bank.transactions:')
     model = bank.transactions(fileobj)
+    fileobj.seek(0)
     print(model)
+    input('Done. Press enter to continue.')
+
+    print('\nTesting bank.accounts:')
+    accounts = bank.accounts(fileobj)
+    print(accounts)
+
     print('Done.')
 
 

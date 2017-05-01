@@ -110,7 +110,7 @@ class TransactionModel():
 
 # Don't directly refer to this from the core code, to encourage orthogonality.
 COLUMNS = OrderedDict((
-    ('source', String),
+    ('bank', String),
     ('from', String),
     ('to', String),
     ('date', Date),
