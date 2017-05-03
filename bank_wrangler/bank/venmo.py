@@ -17,12 +17,12 @@ def name():
 
 
 def filename():
-    return 'venmo.csv'
+    return 'venmo.data'
 
 
 def empty_config():
     return [
-        ConfigField(False, 'Email, phone, or username', None),
+        ConfigField(False, 'Username (no email/phone)', None),
         ConfigField(True, 'Password', None),
     ]
 
@@ -72,8 +72,44 @@ def fetch(config, fileobj):
     json.loads(pre)
 
     driver.quit()
+    fileobj.write('{}\n'.format(user.value))
     fileobj.write(pre)
 
 
 def transactions(fileobj):
-    pass
+    result = schema.TransactionModel(schema.COLUMNS)
+    fileobj.readline()
+    data = json.load(fileobj)['data']
+    assert data['start_balance'] == 0
+    for transaction in data['transactions']:
+        date, time = transaction['datetime_created'].split('T')
+        year, month, day = map(int, date.split('-'))
+        a = transaction['payment']['actor']['username']
+        b = transaction['payment']['target']['user']['username']
+        action = transaction['payment']['action']
+        if action == 'pay':
+            from_to = [a, b]
+        else:
+            assert action == 'charge'
+            from_to = [b, a]
+        funding = transaction.get('funding_source')
+        if funding is not None and funding['name'] != 'Venmo balance':
+            result.ingest_row(
+                schema.String(name()),
+                schema.String(funding['name']),
+                schema.String(from_to[0]),
+                schema.Date(year, month, day),
+                schema.String('fund {}'.format(transaction['note'])),
+                schema.Dollars(transaction['amount']))
+        result.ingest_row(
+            schema.String(name()),
+            schema.String(from_to[0]),
+            schema.String(from_to[1]),
+            schema.Date(year, month, day),
+            schema.String(transaction['note']),
+            schema.Dollars(transaction['amount']))
+    return result
+
+
+def accounts(fileobj):
+    return { fileobj.readline().rstrip('\n') }
