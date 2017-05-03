@@ -5,6 +5,7 @@ from functools import total_ordering
 from decimal import Decimal
 import re
 from collections import OrderedDict
+from tabulate import tabulate
 
 
 @total_ordering
@@ -48,6 +49,10 @@ class Date(Entry):
     def __str__(self):
         return '/'.join(str(x) for x in self.value)
 
+    def __repr__(self):
+        template = 'Date({!r}, {!r}, {!r})'
+        return template.format(*self.value)
+
 
 class String(Entry):
     """
@@ -58,6 +63,9 @@ class String(Entry):
 
     def __str__(self):
         return str(self.value)
+
+    def __repr__(self):
+        return 'String({!r})'.format(self.value)
 
     def matches(self, pattern):
         return bool(re.search(pattern, self.value))
@@ -74,6 +82,9 @@ class Dollars(Entry):
 
     def __str__(self):
         return '$' + str(self.value)
+
+    def __repr__(self):
+        return 'Dollars({!r})'.format(self.value)
 
 
 class TransactionModel():
@@ -106,6 +117,13 @@ class TransactionModel():
 
         # A shallow copy is fine since rows are conceptually immutable.
         return self.transactions[:]
+
+    def __str__(self):
+        return tabulate(self.transactions, headers=self.columns.keys())
+
+    def __repr__(self):
+        template = 'TransactionModel({!r}, {!r})'
+        return template.format(self.columns, self.transactions)
 
 
 # Don't directly refer to this from the core code, to encourage orthogonality.

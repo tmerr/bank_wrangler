@@ -9,6 +9,7 @@ setup(name='bank_wrangler',
       license='GPLv3',
       packages=['bank_wrangler'],
       install_requires=[
+          'tabulate',
           'rncryptor',
           'atomicwrites',
           'selenium',
