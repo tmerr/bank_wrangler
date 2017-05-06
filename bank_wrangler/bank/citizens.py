@@ -7,6 +7,7 @@ from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from bank_wrangler.config import ConfigField
 from bank_wrangler import schema
+from bank_wrangler.bank.common import FirefoxDownloadDriver
 
 
 NUM_SECURITY_QUESTIONS = 3
@@ -45,14 +46,7 @@ def _answer_security_question(question, cfg_security):
 def _download(config, tempdir):
     cfg_user, cfg_pass, *cfg_security = config
 
-    # Set preferences to skip the prompt when downloading the csv.
-    SPECIFY_FOLDER = 2
-    profile = webdriver.FirefoxProfile()
-    profile.set_preference('browser.helperApps.neverAsk.saveToDisk', 'application/binary')
-    profile.set_preference('browser.download.folderList', SPECIFY_FOLDER)
-    profile.set_preference('browser.download.dir', tempdir)
-    driver = webdriver.Firefox(profile)
-
+    driver = FirefoxDownloadDriver(tempdir, 'application/binary')
     driver.get('https://www.citizensbankonline.com/efs/servlet/efs/login.jsp')
 
     # Sign in
@@ -83,14 +77,8 @@ def _download(config, tempdir):
     driver.find_element_by_xpath('.//option[normalize-space(.) = "All Dates"]').click()
     driver.find_element_by_xpath('.//option[normalize-space(.) = "Comma Delimited"]').click()
     driver.execute_script('setFilterValues()') # selenium is misclicking the button, call JS directly.
+    csv_path = driver.grab_download('EXPORT.CSV', timeout_seconds=30)
 
-    # Wait on file to appear and file.part to disappear.
-    csv_path = os.path.join(tempdir, 'EXPORT.CSV')
-    part_path = csv_path + '.part'
-    for timeout in range(30, 0, -1):
-        time.sleep(1)
-        if os.path.isfile(csv_path) and not os.path.isfile(part_path):
-            break
     driver.quit()
     return csv_path
 
