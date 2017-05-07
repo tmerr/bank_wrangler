@@ -32,7 +32,7 @@ from decimal import Decimal
 from selenium import webdriver
 from bank_wrangler.config import ConfigField
 from bank_wrangler import schema
-from bank_wrangler.bank.common import FirefoxDownloadDriver
+from bank_wrangler.bank.common import FirefoxDownloadDriver, fidelity_login
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -61,14 +61,7 @@ def _download(config, tempdir):
 
     # Sign in to "Full View" Dashboard.
     driver.get('https://scs.fidelity.com/customeronly/fullview.shtml')
-    username_elem = WebDriverWait(driver, 30).until(
-        EC.visibility_of_element_located((By.ID, 'userId-input')))
-    password_elem = driver.find_element_by_id('password')
-    username_elem.clear()
-    username_elem.send_keys(username.value)
-    password_elem.clear()
-    password_elem.send_keys(password.value)
-    driver.find_element_by_id('fs-login-button').click()
+    fidelity_login(driver, username.value, password.value)
 
     # Navigate through the jungle of frames.
     driver.implicitly_wait(30)

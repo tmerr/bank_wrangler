@@ -1,6 +1,9 @@
 import time
 import os
 from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 
 class FirefoxDownloadDriver(webdriver.Firefox):
@@ -30,3 +33,18 @@ class FirefoxDownloadDriver(webdriver.Firefox):
             if os.path.isfile(path) and not os.path.isfile(part_path):
                 return path
         return None
+
+
+def fidelity_login(driver, username_string, password_string):
+    """
+    Assumes the driver is either at or loading a Fidelity login form and
+    fills it out once it is visible.
+    """
+    username_elem = WebDriverWait(driver, 30).until(
+        EC.visibility_of_element_located((By.ID, 'userId-input')))
+    password_elem = driver.find_element_by_id('password')
+    username_elem.clear()
+    username_elem.send_keys(username_string)
+    password_elem.clear()
+    password_elem.send_keys(password_string)
+    driver.find_element_by_id('fs-login-button').click()
