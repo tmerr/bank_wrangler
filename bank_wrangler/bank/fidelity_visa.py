@@ -29,7 +29,7 @@ def filename():
 
 def empty_config():
     return [
-        ConfigField(True, 'Username', None),
+        ConfigField(False, 'Username', None),
         ConfigField(True, 'Password', None),
         ConfigField(False, 'Last Four Digits of Credit Card Number', None),
     ]
