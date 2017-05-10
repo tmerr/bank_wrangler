@@ -29,7 +29,6 @@ import csv
 import shutil
 import tempfile
 from decimal import Decimal
-from selenium import webdriver
 from bank_wrangler.config import ConfigField
 from bank_wrangler import schema
 from bank_wrangler.bank.common import FirefoxDownloadDriver, fidelity_login
@@ -135,4 +134,4 @@ def transactions(fileobj):
 
 def accounts(fileobj):
     lines = list(csv.reader(fileobj))[1:]
-    return { account for *_, account, _ in lines }
+    return {account for *_, account, _ in lines}

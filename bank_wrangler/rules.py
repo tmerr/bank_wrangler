@@ -1,6 +1,5 @@
 from decimal import Decimal
 import pyparsing as pp
-from PyQt5 import QtCore
 from bank_wrangler import schema, tresult
 import operator
 from collections import namedtuple, defaultdict
@@ -127,43 +126,3 @@ def compile(lines):
         return env, dict(conflicts)
 
     return f
-
-
-class RulesMonitor():
-    def __init__(self):
-        self.fs_watcher = QtCore.QFileSystemWatcher([
-            '.',
-            './rules.conf',
-        ])
-        self.fs_watcher.fileChanged.connect(self.on_change)
-        self.fs_watcher.directoryChanged.connect(self.on_change)
-        self.cached_text = ''
-
-    def on_change(self, path):
-        try:
-            with open(RULES_FILE, 'r') as f:
-                text = f.read()
-        except FileNotFoundError as e:
-            # When overwriting a file, vim might rename it from file.txt
-            # to file.txt~, then write the updated data to a new file.txt,
-            # and finally delete the file.txt~ backup. This is good for users
-            # since there will always be at least one intact copy of the file
-            # even if the computer's unplugged in the middle of the save. We
-            # should account for these shenanigans by suppressing any errors
-            # if the file is temporarily missing.
-            return
-        except IOError as e:
-            # todo: write to log
-            raise
-
-        if text == self.cached_text:
-            return
-
-        self.cached_text = text
-
-        for line in text.splitlines():
-            parsed = parse(line)
-            if parsed.success:
-                print(parsed.ast) # Send this to Qt somehow
-            else:
-                print(parsed.error)

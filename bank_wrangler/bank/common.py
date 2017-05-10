@@ -13,10 +13,13 @@ class FirefoxDownloadDriver(webdriver.Firefox):
         and initiates downloads automatically for any of the given MIME types.
         """
         self.download_dir = download_dir
-        SPECIFY_FOLDER = 2
         self.profile = webdriver.FirefoxProfile()
-        self.profile.set_preference('browser.helperApps.neverAsk.saveToDisk', ', '.join(mime_types))
-        self.profile.set_preference('browser.download.folderList', SPECIFY_FOLDER)
+        self.profile.set_preference('browser.helperApps.neverAsk.saveToDisk',
+                                    ', '.join(mime_types))
+
+        # Enable setting the default download directory to a custom path.
+        self.profile.set_preference('browser.download.folderList', 2)
+
         self.profile.set_preference('browser.download.dir', self.download_dir)
         super().__init__(self.profile)
 

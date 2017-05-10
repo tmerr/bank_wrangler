@@ -1,9 +1,7 @@
-import os
-import time
 import csv
 import shutil
 import tempfile
-from selenium import webdriver
+from decimal import Decimal
 from selenium.webdriver.common.keys import Keys
 from bank_wrangler.config import ConfigField
 from bank_wrangler import schema
@@ -76,7 +74,8 @@ def _download(config, tempdir):
     download_elem.click()
     driver.find_element_by_xpath('.//option[normalize-space(.) = "All Dates"]').click()
     driver.find_element_by_xpath('.//option[normalize-space(.) = "Comma Delimited"]').click()
-    driver.execute_script('setFilterValues()') # selenium is misclicking the button, call JS directly.
+    # Selenium sometimes misclicks the download button, so just call its onclick javascript.
+    driver.execute_script('setFilterValues()')
     csv_path = driver.grab_download('EXPORT.CSV', timeout_seconds=30)
 
     driver.quit()
@@ -90,29 +89,29 @@ def fetch(config, fileobj):
             shutil.copyfileobj(csv_file, fileobj)
 
 
+def _parse_dollars(string):
+    return Decimal(string.replace(',', '').replace('$', ''))
+
+
 def transactions(fileobj):
     result = schema.TransactionModel(schema.COLUMNS)
     lines = list(csv.reader(fileobj))[1:]
-    for _, date, account_type, description, _, _, credit, debit in lines:
-        is_debit = len(debit) > 0 and len(credit) == 0
-        is_credit = len(credit) > 0 and len(debit) == 0
-        a = 'Citizens {}'.format(account_type)
-        b = 'Universe'
+    for _, date, account_type, description, amount_str, _, credit_str, debit_str in lines:
+        amount = _parse_dollars(amount_str)
+        frm, to = 'Universe', f'Citizens {account_type}'
 
-        if is_debit:
-            assert not is_credit
-            from_to = [a, b]
-            amount = debit
+        if amount < 0:
+            frm, to = to, frm
+            amount *= -1
+            assert amount == _parse_dollars(debit_str)
         else:
-            assert is_credit
-            from_to = [b, a]
-            amount = credit
+            assert amount == _parse_dollars(credit_str)
 
         month, day, year = map(int, date.split('/'))
         result.ingest_row(
             schema.String(name()),
-            schema.String(from_to[0]),
-            schema.String(from_to[1]),
+            schema.String(frm),
+            schema.String(to),
             schema.Date(year, month, day),
             schema.String(description),
             schema.Dollars(amount)
@@ -122,4 +121,4 @@ def transactions(fileobj):
 
 def accounts(fileobj):
     lines = list(csv.reader(fileobj))[1:]
-    return { 'Citizens {}'.format(account_type) for _, _, account_type, *_ in lines }
+    return {'Citizens {}'.format(account_type) for _, _, account_type, *_ in lines}

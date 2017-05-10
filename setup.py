@@ -13,8 +13,6 @@ setup(name='bank_wrangler',
           'rncryptor',
           'atomicwrites',
           'selenium',
-          'PyQt5',
       ],
       scripts=['bin/bank-wrangler'],
-      #data_files=[('/etc/bank_wrangler', 'etc/bank_wrangler/rules.conf')],
       zip_safe=False)

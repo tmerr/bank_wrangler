@@ -82,7 +82,7 @@ def transactions(fileobj):
     data = json.load(fileobj)['data']
     assert data['start_balance'] == 0
     for transaction in data['transactions']:
-        date, time = transaction['datetime_created'].split('T')
+        date, _ = transaction['datetime_created'].split('T')
         year, month, day = map(int, date.split('-'))
         a = transaction['payment']['actor']['username']
         b = transaction['payment']['target']['user']['username']
@@ -112,4 +112,4 @@ def transactions(fileobj):
 
 
 def accounts(fileobj):
-    return { fileobj.readline().rstrip('\n') }
+    return {fileobj.readline().rstrip('\n')}
