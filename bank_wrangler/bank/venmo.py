@@ -46,10 +46,14 @@ def _firefox_default_profile():
 def fetch(config, fileobj):
     user, password = config
 
-    # use the user's regular firefox profile instead of a temporary one.
+    # use the user's regular firefox profile instead of a fresh temporary one.
     # this is to avoid getting fingerprinted as a new device which generates
-    # annoying emails and asks for additional info.
+    # annoying emails and asks for additional info. luckily this profile is
+    # cloned into a temporary directory, so we can change preferences without
+    # affecting the original copy.
     profile = FirefoxProfile(_firefox_default_profile())
+    # disable a json viewer that's enabled by default in firefox 53+.
+    profile.set_preference('devtools.jsonview.enabled', False)
     driver = Firefox(profile)
     
     driver.get('https://venmo.com/account/sign-in/')
