@@ -1,31 +1,32 @@
 """
-Read/write bank configuration options into an encrypted vault.
+Read/write bank configurations into an encrypted vault.
 """
 
 
 from collections import namedtuple
-import rncryptor
 import json
+import rncryptor
 
 
-# Each bank's config is a list of ConfigFields
+# Each config is a bank name and a list of ConfigFields.
+Config = namedtuple('Config', ['bank', 'fields'])
 ConfigField = namedtuple('ConfigField', ['hidden', 'label', 'value'])
 
 
-def _update_banks(banks, iolayer):
-    """Update the plain text list of configured bank names"""
-    text = '\n'.join(sorted(banks))
-    with iolayer.bank_names_writer() as f:
+def _update_banks(keylist, iolayer):
+    """Update the plain text list of keys"""
+    text = '\n'.join(sorted(keylist))
+    with iolayer.vault_keys_writer() as f:
         if len(text) == 0:
             f.truncate()
         else:
             f.write(text)
 
 
-def list(iolayer):
-    """List the bank names with configs in the vault"""
+def keys(iolayer):
+    """List keys in the vault"""
     try:
-        with iolayer.bank_names_reader() as f:
+        with iolayer.vault_keys_reader() as f:
             return [line.strip() for line in f if line.strip() != '']
     except FileNotFoundError:
         return []
@@ -50,18 +51,18 @@ def _create_vault(passphrase, iolayer):
     _update_banks([], iolayer)
 
 
-def get(bank, passphrase, iolayer):
-    """Get bank's config from the vault"""
+def get(key, passphrase, iolayer):
+    """Get config from the vault"""
     try:
         with iolayer.vault_reader() as f:
             encrypted = f.read()
     except FileNotFoundError:
         _create_vault(passphrase, iolayer)
-        return get(bank, passphrase, iolayer)
+        return get(key, passphrase, iolayer)
     data = _decrypt(encrypted, passphrase)
-    result = data[bank]
+    bank, fields = data[key]
     # Hack to restore namedtuples lost during serialization
-    return [ConfigField(*line) for line in result]
+    return Config(bank, [ConfigField(*line) for line in fields])
 
 
 def _mutate_config(passphrase, mutate, iolayer):
@@ -80,15 +81,15 @@ def _mutate_config(passphrase, mutate, iolayer):
     _update_banks(data.keys(), iolayer)
 
 
-def put(bank, config, passphrase, iolayer):
-    """Put bank's config in the vault"""
+def put(key, config, passphrase, iolayer):
+    """Put config in the vault"""
     def mutate(data):
-        data[bank] = config
+        data[key] = config
     _mutate_config(passphrase, mutate, iolayer)
 
 
-def delete(bank, passphrase, iolayer):
-    """Delete bank's config from the vault"""
+def delete(key, passphrase, iolayer):
+    """Delete config from the vault"""
     def mutate(data):
-        del data[bank]
+        del data[key]
     _mutate_config(passphrase, mutate, iolayer)

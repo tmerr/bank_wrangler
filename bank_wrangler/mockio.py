@@ -47,15 +47,15 @@ def open_as_reader(obj):
 
 class MockIO(object):
     def __init__(self):
-        self.bank_names = PatchedStringIO()
+        self.vault_keys = PatchedStringIO()
         self.vault = PatchedBytesIO()
         self.bank = defaultdict(PatchedStringIO)
 
-    def bank_names_reader(self):
-        return open_as_reader(self.bank_names)
+    def vault_keys_reader(self):
+        return open_as_reader(self.vault_keys)
 
-    def bank_names_writer(self):
-        return open_as_writer(self.bank_names)
+    def vault_keys_writer(self):
+        return open_as_writer(self.vault_keys)
 
     def vault_reader(self):
         return open_as_reader(self.vault)

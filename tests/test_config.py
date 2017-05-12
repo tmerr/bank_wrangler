@@ -1,44 +1,51 @@
+import bank_wrangler
 from bank_wrangler import config
 from bank_wrangler.mockio import MockIO
 from nose.tools import assert_equals, assert_raises
 
 
 def test_banks_empty():
-    assert_equals(config.list(MockIO()), [])
+    assert_equals(config.keys(MockIO()), [])
 
 
 def test_put_get():
     io = MockIO()
-    bankname = 'mybank'
-    bankconfig_in = [
-        config.ConfigField(False, 'username', 'abc'),
-        config.ConfigField(True, 'password', 'xyz'),
-    ]
+    config_in = config.Config(
+        bank = 'mybank',
+        fields = [
+            config.ConfigField(False, 'username', 'abc'),
+            config.ConfigField(True, 'password', 'xyz'),
+        ]
+    )
+    key = 'somekey'
     vaultpass = 'abcd'
-    config.put(bankname, bankconfig_in, vaultpass, io)
-    bankconfig_out = config.get(bankname, vaultpass, io)
-    assert_equals(bankconfig_in, bankconfig_out)
+    config.put(key, config_in, vaultpass, io)
+    config_out = config.get(key, vaultpass, io)
+    assert_equals(config_in, config_out)
 
 
-def test_put_list():
+def test_put_keys():
     io = MockIO()
     bankname = 'mybank'
     bankconfig = []
     vaultpass = 'abcd'
     config.put(bankname, bankconfig, vaultpass, io)
-    assert_equals(config.list(io), ['mybank'])
+    assert_equals(config.keys(io), ['mybank'])
 
 
 def test_put_delete():
     io = MockIO()
-    bankname = 'mybank'
-    bankconfig = [
-        config.ConfigField(False, 'username', 'abc'),
-        config.ConfigField(True, 'password', 'xyz'),
-    ]
+    config_in = config.Config(
+        bank = 'mybank',
+        fields = [
+            config.ConfigField(False, 'username', 'abc'),
+            config.ConfigField(True, 'password', 'xyz'),
+        ]
+    )
+    key = 'somekey'
     vaultpass = 'abcd'
-    config.put(bankname, bankconfig, vaultpass, io)
-    assert_equals(config.list(io), ['mybank'])
-    config.delete(bankname, vaultpass, io)
-    assert_equals(config.list(io), [])
-    assert_raises(KeyError, config.get, bankname, vaultpass, io)
+    config.put(key, config_in, vaultpass, io)
+    assert_equals(config.keys(io), ['somekey'])
+    config.delete(key, vaultpass, io)
+    assert_equals(config.keys(io), [])
+    assert_raises(KeyError, config.get, key, vaultpass, io)
