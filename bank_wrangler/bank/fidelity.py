@@ -42,10 +42,6 @@ def name():
     return 'Fidelity'
 
 
-def filename():
-    return 'fidelity.csv'
-
-
 def empty_config():
     return [
         ConfigField(False, 'Username', None),

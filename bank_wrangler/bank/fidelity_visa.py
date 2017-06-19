@@ -23,10 +23,6 @@ def name():
     return 'Fidelity Visa'
 
 
-def filename():
-    return 'fidelity_visa.csv'
-
-
 def empty_config():
     return [
         ConfigField(False, 'Username', None),

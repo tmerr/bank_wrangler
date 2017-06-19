@@ -4,10 +4,6 @@ from bank_wrangler.mockio import MockIO
 from nose.tools import assert_equals, assert_raises
 
 
-def test_banks_empty():
-    assert_equals(config.keys(MockIO()), [])
-
-
 def test_put_get():
     io = MockIO()
     config_in = config.Config(
@@ -19,6 +15,7 @@ def test_put_get():
     )
     key = 'somekey'
     vaultpass = 'abcd'
+    config.init(vaultpass, io)
     config.put(key, config_in, vaultpass, io)
     config_out = config.get(key, vaultpass, io)
     assert_equals(config_in, config_out)
@@ -29,6 +26,7 @@ def test_put_keys():
     bankname = 'mybank'
     bankconfig = []
     vaultpass = 'abcd'
+    config.init(vaultpass, io)
     config.put(bankname, bankconfig, vaultpass, io)
     assert_equals(config.keys(io), ['mybank'])
 
@@ -44,6 +42,7 @@ def test_put_delete():
     )
     key = 'somekey'
     vaultpass = 'abcd'
+    config.init(vaultpass, io)
     config.put(key, config_in, vaultpass, io)
     assert_equals(config.keys(io), ['somekey'])
     config.delete(key, vaultpass, io)

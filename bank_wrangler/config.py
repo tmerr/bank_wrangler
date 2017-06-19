@@ -13,10 +13,31 @@ Config = namedtuple('Config', ['bank', 'fields'])
 ConfigField = namedtuple('ConfigField', ['hidden', 'label', 'value'])
 
 
+def init(passphrase, iolayer):
+    """Create empty vault and vault_keys files"""
+    encrypted = _encrypt({}, passphrase)
+    with iolayer.vault_writer(overwrite=False) as f:
+        f.write(encrypted)
+    with iolayer.vault_keys_writer(overwrite=False) as f:
+        f.truncate()
+
+
+def ready(iolayer):
+    """Return True if the vault and vault_keys files exist"""
+    try:
+        with iolayer.vault_reader() as f:
+            pass
+        with iolayer.vault_keys_reader() as f:
+            pass
+        return True
+    except FileNotFoundError:
+        return False
+
+
 def _update_banks(keylist, iolayer):
     """Update the plain text list of keys"""
     text = '\n'.join(sorted(keylist))
-    with iolayer.vault_keys_writer() as f:
+    with iolayer.vault_keys_writer(overwrite=True) as f:
         if len(text) == 0:
             f.truncate()
         else:
@@ -25,11 +46,8 @@ def _update_banks(keylist, iolayer):
 
 def keys(iolayer):
     """List keys in the vault"""
-    try:
-        with iolayer.vault_keys_reader() as f:
-            return [line.strip() for line in f if line.strip() != '']
-    except FileNotFoundError:
-        return []
+    with iolayer.vault_keys_reader() as f:
+        return [line.strip() for line in f if line.strip() != '']
 
 
 def _encrypt(data, passphrase):
@@ -44,21 +62,10 @@ def _decrypt(encrypted, passphrase):
     return json.loads(cryptor.decrypt(encrypted, passphrase))
 
 
-def _create_vault(passphrase, iolayer):
-    encrypted = _encrypt({}, passphrase)
-    with iolayer.vault_writer(overwrite=False) as f:
-        f.write(encrypted)
-    _update_banks([], iolayer)
-
-
 def get(key, passphrase, iolayer):
     """Get config from the vault"""
-    try:
-        with iolayer.vault_reader() as f:
-            encrypted = f.read()
-    except FileNotFoundError:
-        _create_vault(passphrase, iolayer)
-        return get(key, passphrase, iolayer)
+    with iolayer.vault_reader() as f:
+        encrypted = f.read()
     data = _decrypt(encrypted, passphrase)
     bank, fields = data[key]
     # Hack to restore namedtuples lost during serialization
@@ -67,12 +74,8 @@ def get(key, passphrase, iolayer):
 
 def _mutate_config(passphrase, mutate, iolayer):
     """Higher-order function: decrypt, apply mutation, encrypt"""
-    try:
-        with iolayer.vault_reader() as f:
-            old_encrypted = f.read()
-    except FileNotFoundError:
-        _create_vault(passphrase, iolayer)
-        return _mutate_config(passphrase, mutate, iolayer)
+    with iolayer.vault_reader() as f:
+        old_encrypted = f.read()
     data = _decrypt(old_encrypted, passphrase)
     mutate(data)
     new_encrypted = _encrypt(data, passphrase)

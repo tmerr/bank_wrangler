@@ -15,10 +15,6 @@ def name():
     return 'Citizens Bank'
 
 
-def filename():
-    return 'citizens.csv'
-
-
 def empty_config():
     return [
         ConfigField(False, 'Username', None),

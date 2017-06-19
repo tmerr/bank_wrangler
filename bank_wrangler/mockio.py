@@ -31,7 +31,9 @@ class PatchedBytesIO(BytesIO):
         self.seek(0)
 
 
-def open_as_writer(obj):
+def open_as_writer(obj, overwrite):
+    if obj.exists and not overwrite:
+        raise FileExistsError
     obj.writer = True
     if obj.writer:
         obj.exists = True
@@ -54,17 +56,20 @@ class MockIO(object):
     def vault_keys_reader(self):
         return open_as_reader(self.vault_keys)
 
-    def vault_keys_writer(self):
-        return open_as_writer(self.vault_keys)
+    def vault_keys_writer(self, overwrite):
+        return open_as_writer(self.vault_keys, overwrite)
 
     def vault_reader(self):
         return open_as_reader(self.vault)
 
     def vault_writer(self, overwrite):
-        return open_as_writer(self.vault)
+        return open_as_writer(self.vault, overwrite)
 
-    def bank_reader(self, filename):
-        return open_as_reader(self.bank[filename])
+    def data_reader(self, key):
+        return open_as_reader(self.bank[key])
 
-    def bank_writer(self, filename):
-        return open_as_writer(self.bank[filename])
+    def data_writer(self, key):
+        return open_as_writer(self.bank[key])
+
+    def data_exists(self, key):
+        return key in self.bank

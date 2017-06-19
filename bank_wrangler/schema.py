@@ -118,6 +118,12 @@ class TransactionModel():
         # A shallow copy is fine since rows are conceptually immutable.
         return self.transactions[:]
 
+    def __iter__(self):
+        return self.transactions.__iter__()
+
+    def __len__(self):
+        return len(self.transactions)
+
     def __str__(self):
         return tabulate(self.transactions, headers=self.columns.keys())
 

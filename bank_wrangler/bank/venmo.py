@@ -16,10 +16,6 @@ def name():
     return 'Venmo'
 
 
-def filename():
-    return 'venmo.data'
-
-
 def empty_config():
     return [
         ConfigField(False, 'Username (no email/phone)', None),
