@@ -74,7 +74,7 @@ def test_date_compare():
 
 def test_date_str():
     date = schema.Date(1995, 1, 2)
-    assert str(date) == '1995/1/2'
+    assert str(date) == '1995/01/02'
 
 
 def test_dollars_str():

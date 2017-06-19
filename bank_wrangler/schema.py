@@ -47,7 +47,7 @@ class Date(Entry):
         super().__init__(value)
 
     def __str__(self):
-        return '/'.join(str(x) for x in self.value)
+        return '{:04}/{:02}/{:02}'.format(*self.value)
 
     def __repr__(self):
         template = 'Date({!r}, {!r}, {!r})'

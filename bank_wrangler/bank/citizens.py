@@ -103,7 +103,9 @@ def transactions(fileobj):
         else:
             assert amount == _parse_dollars(credit_str)
 
+        # change MM/DD/YY to YYYY/MM/DD.
         month, day, year = map(int, date.split('/'))
+        year = 2000 + year
         result.ingest_row(
             schema.String(name()),
             schema.String(frm),
