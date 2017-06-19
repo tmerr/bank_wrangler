@@ -33,7 +33,7 @@ def fetch(key, bank_config, iolayer):
     bank = _pick_module(bank_config)
     with iolayer.data_writer(key) as f:
         try:
-            bank.fetch(bank.fields, f)
+            bank.fetch(bank_config.fields, f)
         except Exception as e:
             raise BankException from e
 
