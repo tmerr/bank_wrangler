@@ -105,13 +105,12 @@ def compile(lines):
     Translate the type checked ast lines into a python function object
     f: transaction -> (env, conflicts)
     """
-
-    oklines = [(i, line.ok) for i, line in enumerate(lines) if line.has_ok()]
+    oklines = [line.ok for line in lines if line.has_ok()]
 
     def f(transaction):
         env = {}
         conflicts = defaultdict(set)
-        for i, line in oklines:
+        for line in oklines:
             conditions, assignments = line
             if all(binop(transaction[col], literal)
                    for col, binop, literal in conditions):
