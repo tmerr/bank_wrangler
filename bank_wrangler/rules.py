@@ -1,9 +1,7 @@
-from decimal import Decimal
 import pyparsing as pp
 from bank_wrangler import schema, tresult
 import operator
-from collections import namedtuple, defaultdict
-from functools import lru_cache
+from collections import defaultdict
 
 
 RULES_FILE = 'rules.conf'
