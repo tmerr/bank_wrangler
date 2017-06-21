@@ -94,7 +94,7 @@ class TransactionModel():
     data ingested from arbitrary sources.
     """
     def __init__(self, columns):
-        self.columns = OrderedDict(columns)
+        self.columns = IndexedOrderedDict(columns)
         self.transactions = []
 
     def clear(self):
@@ -118,6 +118,9 @@ class TransactionModel():
         # A shallow copy is fine since rows are conceptually immutable.
         return self.transactions[:]
 
+    def get_columns(self):
+        return self.columns
+
     def __iter__(self):
         return self.transactions.__iter__()
 
@@ -132,8 +135,13 @@ class TransactionModel():
         return template.format(self.columns, self.transactions)
 
 
+class IndexedOrderedDict(OrderedDict):
+    def index(self, key):
+        return list(self).index(key)
+
+
 # Don't directly refer to this from the core code, to encourage orthogonality.
-COLUMNS = OrderedDict((
+COLUMNS = IndexedOrderedDict((
     ('bank', String),
     ('from', String),
     ('to', String),
@@ -141,3 +149,7 @@ COLUMNS = OrderedDict((
     ('description', String),
     ('amount', Dollars),
 ))
+
+
+COLUMNS_WITH_CATEGORY = OrderedDict(COLUMNS)
+COLUMNS_WITH_CATEGORY['category'] = String

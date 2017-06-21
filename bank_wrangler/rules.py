@@ -45,20 +45,20 @@ _parser = _build_parser()
 
 def parse(text):
     result = []
-    for line in text.splitlines():
+    for i, line in enumerate(text.splitlines()):
         if len(line.strip()) != 0:
             try:
                 result.append(
-                    tresult.ok(_parser.parseString(line))
+                    tresult.ok((i, _parser.parseString(line)))
                 )
             except pp.ParseException as e:
                 result.append(
-                    tresult.err((e.lineno, e.col, str(e)))
+                    tresult.err(f'parse error at {e.lineno}:{e.col}: {e}')
                 )
     return result
 
 
-def type_check_line(columns, ast_line):
+def type_check_line(columns, lineno, ast_line):
     ast_conditions, ast_assignments = [], []
     for left, op, right in ast_line:
         # Make sure columns exist and types line up
@@ -66,26 +66,26 @@ def type_check_line(columns, ast_line):
             try:
                 t0 = columns[left].entrytype()
             except KeyError:
-                error = f'column does not exist: {left}'
+                error = f'type error at line {lineno}: column does not exist: {left}'
                 return result.err(error)
             t1 = right.entrytype()
 
             if t0 != t1:
-                error = f'type mistmatch in {columns[left].entrytype()} {op} {right}'
+                error = f'type error at line {lineno}: type mistmatch in {columns[left].entrytype()} {op} {right}'
                 return result.err(error)
 
             if op == '~~' and t0 != 'String':
-                error = f'~~ operator not supported on {t1} entrytype'
+                error = f'type error at line {lineno}: ~~ operator not supported on {t1} entrytype'
                 return result.err(error)
 
             # Use the column's index instead of name in the type checked AST.
             # Also substitute in the actual comparison function.
-            index = list(columns.keys()).index(left)
+            index = columns.index(left)
             ast_conditions.append((index, operator_map[op], right))
         else:
             assert op == '='
             if left != 'category' or right.entrytype() != 'String':
-                error = f'type mismatch in {left} {op} {right}'
+                error = f'type error at line {lineno}: type mismatch in {left} {op} {right}'
                 return tresult.err(error)
             ast_assignments.append((left, right))
 
@@ -94,8 +94,8 @@ def type_check_line(columns, ast_line):
 
 
 def parse_and_check(columns, text):
-    return [line.map(lambda goodline: type_check_line(columns, goodline))
-            for line in parse(text)]
+    return [result.map(lambda i_line: type_check_line(columns, *i_line))
+            for result in parse(text)]
 
 
 def compile(lines):

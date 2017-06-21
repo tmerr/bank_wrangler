@@ -1,5 +1,5 @@
 from bank_wrangler import rules, schema
-from collections import OrderedDict
+from bank_wrangler.schema import IndexedOrderedDict
 from nose.tools import assert_equals
 
 
@@ -23,7 +23,7 @@ def test_parse_fail_2():
     assert len(err0) > 0
 
 
-COLUMNS = OrderedDict({
+COLUMNS = IndexedOrderedDict({
     'first': schema.String,
     'second': schema.Dollars,
 })

@@ -1,12 +1,7 @@
 from itertools import zip_longest, chain
 from collections import defaultdict
 from bank_wrangler import schema
-
-
-def _get_field(transaction, column_name):
-    keys = list(schema.COLUMNS)
-    i = keys.index(column_name)
-    return transaction[i]
+from bank_wrangler.schema import COLUMNS
 
 
 def _partition(iterable, key):
@@ -18,7 +13,7 @@ def _partition(iterable, key):
 
 
 def _loose_identity(transaction):
-    return tuple(_get_field(transaction, col)
+    return tuple(transaction[COLUMNS.index(col)]
                  for col in ('from', 'to', 'date', 'amount'))
 
 
@@ -61,8 +56,8 @@ def _unmatch(trans, source_accounts):
 
 def _split_internal_external(transactions, accounts_set):
     def isinternal(transaction):
-        frm = _get_field(transaction, 'from').value
-        to = _get_field(transaction, 'to').value
+        frm = transaction[COLUMNS.index('from')].value
+        to = transaction[COLUMNS.index('to')].value
         return frm in accounts_set and to in accounts_set
     internal = [t for t in transactions if isinternal(t)]
     external = [t for t in transactions if not isinternal(t)]
@@ -120,7 +115,7 @@ def deduplicate(transactions, bank_to_accounts_map):
     result = schema.TransactionModel(schema.COLUMNS)
     for similar in _partition(internal_transactions, key=_loose_identity).values():
         splitbybank = list(_partition(similar,
-                                      key=lambda t: _get_field(t, 'bank')).items())
+                                      key=lambda t: t[COLUMNS.index('bank')]).items())
         assert len(splitbybank) in [1, 2]
         if len(splitbybank) == 1:
             splitbybank.append((None, []))
