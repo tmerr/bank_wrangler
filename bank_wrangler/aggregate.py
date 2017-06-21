@@ -70,7 +70,7 @@ def map_rules(rules_function, transactions):
     Map the rules function to every transaction.
 
     Params:
-        rules_function: takes a transaction an returns a tuple (env, conflicts), where
+        rules_function: takes a transaction and returns a tuple (env, conflicts), where
             env: a dict from column names to schema.Entry
             conflicts: a dict from column names to sets of schema.Entry
         transactions: a schema.TransactionModel
