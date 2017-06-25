@@ -6,7 +6,6 @@ written to.
 
 
 from io import StringIO, BytesIO
-from collections import defaultdict
 
 
 class PatchedStringIO(StringIO):
@@ -45,31 +44,3 @@ def open_as_reader(obj):
     if not obj.exists:
         raise FileNotFoundError
     return obj
-
-
-class MockIO(object):
-    def __init__(self):
-        self.vault_keys = PatchedStringIO()
-        self.vault = PatchedBytesIO()
-        self.bank = defaultdict(PatchedStringIO)
-
-    def vault_keys_reader(self):
-        return open_as_reader(self.vault_keys)
-
-    def vault_keys_writer(self, overwrite):
-        return open_as_writer(self.vault_keys, overwrite)
-
-    def vault_reader(self):
-        return open_as_reader(self.vault)
-
-    def vault_writer(self, overwrite):
-        return open_as_writer(self.vault, overwrite)
-
-    def data_reader(self, key):
-        return open_as_reader(self.bank[key])
-
-    def data_writer(self, key):
-        return open_as_writer(self.bank[key])
-
-    def data_exists(self, key):
-        return key in self.bank
