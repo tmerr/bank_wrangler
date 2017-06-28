@@ -7,12 +7,12 @@ import click
 import bank_wrangler.config
 from bank_wrangler.config import Config
 from bank_wrangler.fileio import FileIO
-from bank_wrangler import aggregate
+from bank_wrangler import fileio
+from bank_wrangler import aggregate, rules, schema
 
 
 def _assert_initialized():
-    iolayer = FileIO(os.getcwd())
-    if not bank_wrangler.config.ready(iolayer):
+    if not FileIO(os.getcwd()).is_initialized():
         print("fatal: directory must be initialized with `bank_wrangler init`",
               file=sys.stderr)
         sys.exit(1)
@@ -32,14 +32,9 @@ def cli():
 @click.argument('directory')
 def init(directory):
     """Initialize a new bank_wrangler directory"""
-    path = os.path.abspath(directory)
-    try:
-        os.makedirs(path)
-    except FileExistsError:
-        print(f'fatal: "{path}" already exists', file=sys.stderr)
-        sys.exit(1)
     passphrase = getpass('set a master passphrase: ')
-    bank_wrangler.config.init(passphrase, FileIO(path))
+    iolayer = FileIO(os.path.abspath(directory))
+    iolayer.initialize(bank_wrangler.config.empty_vault(passphrase))
 
 
 @cli.group()
@@ -154,6 +149,20 @@ def check_rules():
     pass
 
 
+def _rules_func(iolayer):
+    with iolayer.rules_reader() as f:
+        text = f.read()
+    checked = rules.parse_and_check(schema.COLUMNS, text)
+    return rules.compile(checked)
+
+
+def _final_rules_func(iolayer):
+    with iolayer.final_rules_reader() as f:
+        text = f.read()
+    checked = rules.parse_and_check(schema.COLUMNS_WITH_CATEGORY, text)
+    return rules.compile(checked)
+
+
 @cli.command(name='list')
 @click.argument('name')
 def list_transactions(name):
@@ -163,9 +172,17 @@ def list_transactions(name):
     passphrase = _promptpass()
     cfg = bank_wrangler.config.get(name, passphrase, iolayer)
     try:
-        print(str(aggregate.list_transactions(name, cfg, iolayer)))
+        transactions = aggregate.list_transactions(name, cfg, iolayer)
     except aggregate.BankException:
         raise
+
+    func = _rules_func(iolayer)
+    new_transactions, errors = aggregate.map_rules(func, transactions)
+
+    print(str(new_transactions))
+    if len(errors) > 0:
+        print('\ndetected conflicting rule applications:')
+        print('\n'.join('    ' + error for error in errors))
 
 
 @cli.command(name='list-all')
@@ -174,13 +191,30 @@ def list_all_transactions():
     _assert_initialized()
     iolayer = FileIO(os.getcwd())
     passphrase = _promptpass()
+
+    transactions0 = schema.TransactionModel(schema.COLUMNS)
+
     configs_by_key = {}
-    for key in bank_wrangler.config.keys(iolayer):
-        configs_by_key[key] = bank_wrangler.config.get(key, passphrase, iolayer)
     try:
-        print(str(aggregate.list_all_transactions(configs_by_key, iolayer)))
+        for key in bank_wrangler.config.keys(iolayer):
+            conf = bank_wrangler.config.get(key, passphrase, iolayer)
+            configs_by_key[key] = conf
+            for row in aggregate.list_transactions(key, conf, iolayer):
+                transactions0.ingest_row(*row)
+        transactions1, errors1 = aggregate.map_rules(_rules_func(iolayer), transactions0)
+        transactions2 = aggregate.combine(configs_by_key, transactions1, iolayer)
+        transactions3, errors2 = aggregate.map_rules(_final_rules_func(iolayer), transactions2)
     except aggregate.BankException:
         raise
+
+    print(str(transactions3))
+    if len(errors1) > 0:
+        print('\ndetected conflicting rule applications:')
+        print('\n'.join('    ' + error for error in errors1))
+
+    if len(errors2) > 0:
+        print('\ndetected conflicting rule applications:')
+        print('\n'.join('    ' + error for error in errors2))
 
 
 @cli.command()

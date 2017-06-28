@@ -15,7 +15,7 @@ def test_put_get():
     )
     key = 'somekey'
     vaultpass = 'abcd'
-    config.init(vaultpass, io)
+    io.initialize(config.empty_vault(vaultpass))
     config.put(key, config_in, vaultpass, io)
     config_out = config.get(key, vaultpass, io)
     assert_equals(config_in, config_out)
@@ -26,7 +26,7 @@ def test_put_keys():
     bankname = 'mybank'
     bankconfig = []
     vaultpass = 'abcd'
-    config.init(vaultpass, io)
+    io.initialize(config.empty_vault(vaultpass))
     config.put(bankname, bankconfig, vaultpass, io)
     assert_equals(config.keys(io), ['mybank'])
 
@@ -42,7 +42,7 @@ def test_put_delete():
     )
     key = 'somekey'
     vaultpass = 'abcd'
-    config.init(vaultpass, io)
+    io.initialize(config.empty_vault(vaultpass))
     config.put(key, config_in, vaultpass, io)
     assert_equals(config.keys(io), ['somekey'])
     config.delete(key, vaultpass, io)

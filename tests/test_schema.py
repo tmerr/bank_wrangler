@@ -37,15 +37,6 @@ def test_transactions_view_snapshot():
     assert len(snapshot2) == 2
 
 
-def test_string_matches():
-    entry = schema.String('hello world')
-    assert entry.matches('ello worl')
-    assert not entry.matches('^ello world')
-    assert not entry.matches('hello worl$')
-    assert entry.matches('^hello world$')
-    assert entry.matches('^.ello wo[rld]+$')
-
-
 def test_string_compare():
     a = schema.String('aaa')
     b = schema.String('aab')

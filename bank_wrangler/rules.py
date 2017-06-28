@@ -1,7 +1,8 @@
 import pyparsing as pp
-from bank_wrangler import schema, tresult
 import operator
 from collections import defaultdict
+import re
+from bank_wrangler import schema, tresult
 
 
 RULES_FILE = 'rules.conf'
@@ -13,7 +14,7 @@ operator_map = {
     '>=': operator.ge,
     '<': operator.lt,
     '>': operator.gt,
-    '~~': lambda a, b: a.matches(b),
+    '~~': lambda a, b: re.search(b.value, a.value),
 }
 
 
@@ -67,16 +68,16 @@ def type_check_line(columns, lineno, ast_line):
                 t0 = columns[left].entrytype()
             except KeyError:
                 error = f'type error at line {lineno}: column does not exist: {left}'
-                return result.err(error)
+                return tresult.err(error)
             t1 = right.entrytype()
 
             if t0 != t1:
                 error = f'type error at line {lineno}: type mistmatch in {columns[left].entrytype()} {op} {right}'
-                return result.err(error)
+                return tresult.err(error)
 
             if op == '~~' and t0 != 'String':
                 error = f'type error at line {lineno}: ~~ operator not supported on {t1} entrytype'
-                return result.err(error)
+                return tresult.err(error)
 
             # Use the column's index instead of name in the type checked AST.
             # Also substitute in the actual comparison function.
@@ -84,7 +85,7 @@ def type_check_line(columns, lineno, ast_line):
             ast_conditions.append((index, operator_map[op], right))
         else:
             assert op == '='
-            if left != 'category' or right.entrytype() != 'String':
+            if columns[left].entrytype() != right.entrytype():
                 error = f'type error at line {lineno}: type mismatch in {left} {op} {right}'
                 return tresult.err(error)
             ast_assignments.append((left, right))

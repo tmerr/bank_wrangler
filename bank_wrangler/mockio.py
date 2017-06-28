@@ -7,6 +7,7 @@ written to.
 
 from io import StringIO, BytesIO
 from collections import defaultdict
+from bank_wrangler.fileio import InitializationMixin
 
 
 class PatchedStringIO(StringIO):
@@ -47,11 +48,25 @@ def open_as_reader(obj):
     return obj
 
 
-class MockIO(object):
+class MockIO(InitializationMixin):
     def __init__(self):
+        self.rules = PatchedStringIO()
+        self.final_rules = PatchedStringIO()
         self.vault_keys = PatchedStringIO()
         self.vault = PatchedBytesIO()
         self.bank = defaultdict(PatchedStringIO)
+
+    def rules_reader(self):
+        return open_as_reader(self.rules)
+
+    def rules_writer(self, overwrite):
+        return open_as_writer(self.rules, overwrite)
+
+    def final_rules_reader(self):
+        return open_as_reader(self.rules)
+
+    def final_rules_writer(self, overwrite):
+        return open_as_writer(self.final_rules, overwrite)
 
     def vault_keys_reader(self):
         return open_as_reader(self.vault_keys)

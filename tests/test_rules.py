@@ -30,7 +30,7 @@ COLUMNS = IndexedOrderedDict({
 
 
 def test_compile_1():
-    text = 'first == "match this", category = "bucket"'
+    text = 'first == "match this", first = "bucket"'
     ast = rules.parse_and_check(COLUMNS, text)
     f = rules.compile(ast)
     transaction = [
@@ -38,7 +38,7 @@ def test_compile_1():
         schema.Dollars('$32.53'),
     ]
     expected = (
-        {'category': schema.String('bucket')},
+        {'first': schema.String('bucket')},
         {},
     )
     assert_equals(f(transaction), expected)
@@ -46,8 +46,8 @@ def test_compile_1():
 
 def test_compile_2():
     text = '''
-        first == "match this", category = "A"
-        second >= $10.24, category = "B"
+        first == "match this", first = "A"
+        second >= $10.24, first = "B"
     '''
     ast = rules.parse_and_check(COLUMNS, text)
     f = rules.compile(ast)
@@ -57,15 +57,15 @@ def test_compile_2():
     ]
     expected = (
         {},
-        {'category': {schema.String('A'), schema.String('B')}},
+        {'first': {schema.String('A'), schema.String('B')}},
     )
     assert f(transaction) == expected
 
 
 def test_compile_no_match():
     text = '''
-        first == "match this", category = "A"
-        second >= $10.24, category = "B"
+        first == "match this", first = "A"
+        second >= $10.24, first = "B"
     '''
     ast = rules.parse_and_check(COLUMNS, text)
     f = rules.compile(ast)

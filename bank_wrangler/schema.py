@@ -67,9 +67,6 @@ class String(Entry):
     def __repr__(self):
         return 'String({!r})'.format(self.value)
 
-    def matches(self, pattern):
-        return bool(re.search(pattern, self.value))
-
 
 class Dollars(Entry):
     """

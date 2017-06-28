@@ -13,25 +13,8 @@ Config = namedtuple('Config', ['bank', 'fields'])
 ConfigField = namedtuple('ConfigField', ['hidden', 'label', 'value'])
 
 
-def init(passphrase, iolayer):
-    """Create empty vault and vault_keys files"""
-    encrypted = _encrypt({}, passphrase)
-    with iolayer.vault_writer(overwrite=False) as f:
-        f.write(encrypted)
-    with iolayer.vault_keys_writer(overwrite=False) as f:
-        f.truncate()
-
-
-def ready(iolayer):
-    """Return True if the vault and vault_keys files exist"""
-    try:
-        with iolayer.vault_reader() as f:
-            pass
-        with iolayer.vault_keys_reader() as f:
-            pass
-        return True
-    except FileNotFoundError:
-        return False
+def empty_vault(passphrase):
+    return _encrypt({}, passphrase)
 
 
 def _update_banks(keylist, iolayer):

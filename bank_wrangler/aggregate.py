@@ -76,30 +76,26 @@ def map_rules(rules_function, transactions):
         transactions: a schema.TransactionModel
 
     Returns:
-        a schema.TransactionModel
+        a schema.TransactionModel, and a list of conflict error messages.
     """
     columns = transactions.get_columns()
     result = schema.TransactionModel(columns)
+    error_messages = []
     for t in transactions:
         env, conflicts = rules_function(t)
         if conflicts:
-            print(f'rules conflict: {conflicts}', sys.stderr)
+            error_messages.append(f'rules conflict: {conflicts}')
         result.ingest_row(*_transform(t, env, columns))
-    return result
+    return result, error_messages
 
 
-def list_all_transactions(configs_by_key, iolayer):
+def combine(configs_by_key, transactions, iolayer):
     """
-    Aggregate transactions across all bank configs.
+    Combine transactions across all bank configs.
 
     Raises:
         BankException
     """
-    transactions = schema.TransactionModel(schema.COLUMNS)
-    for key, config in configs_by_key.items():
-        for row in list_transactions(key, config, iolayer):
-            transactions.ingest_row(*row)
-
     bank_to_accounts_map = {}
     for key, config in configs_by_key.items():
         with iolayer.data_reader(key) as f:

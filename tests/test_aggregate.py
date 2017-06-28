@@ -16,9 +16,10 @@ def test_map_rules():
     def rules_function(_transaction):
         return {'from': schema.String('accountC')}, {}
 
-    new_transactions = aggregate.map_rules(rules_function,
-                                           transactions)
+    new_transactions, errors = aggregate.map_rules(rules_function,
+                                                   transactions)
     assert_equals(len(new_transactions), 1)
+    assert_equals(errors, [])
     assert_equals(new_transactions.view_snapshot()[0],
                   (schema.String('testbank'),
                    schema.String('accountC'),
