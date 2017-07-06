@@ -1,9 +1,11 @@
 import time
 import os
+from decimal import Decimal
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from bank_wrangler import schema
 
 
 class FirefoxDownloadDriver(webdriver.Firefox):
@@ -51,3 +53,40 @@ def fidelity_login(driver, username_string, password_string):
     password_elem.clear()
     password_elem.send_keys(password_string)
     driver.find_element_by_id('fs-login-button').click()
+
+
+def _oldest_transaction_date(transactions):
+    date_column = transactions.columns.index('date')
+    return min(t[date_column] for t in transactions)
+
+
+def _compute_balance(account, transactions):
+    result = Decimal('0')
+    from_column = transactions.columns.index('from')
+    to_column = transactions.columns.index('to')
+    amount_column = transactions.columns.index('amount')
+    for transaction in transactions:
+        amount = transaction[amount_column].value
+        if transaction[to_column].value == account:
+            result += amount
+        if transaction[from_column].value == account:
+            result -= amount
+    return result
+
+
+def add_balance_correcting_transaction(bankname, account, real_balance, transactions):
+    correction = real_balance - _compute_balance(account, transactions)
+    frm, to = schema.String('Universe'), schema.String(account)
+    if correction != 0:
+        if correction < 0:
+            frm, to = to, frm
+            correction *= -1
+        transactions.ingest_row(
+            schema.String(bankname),
+            frm,
+            to,
+            _oldest_transaction_date(transactions),
+            schema.String('Balance correction'),
+            schema.Dollars(correction)
+        )
+    assert real_balance == _compute_balance(account, transactions)
