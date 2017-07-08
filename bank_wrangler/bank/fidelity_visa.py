@@ -7,7 +7,11 @@ import time
 import csv
 import shutil
 import tempfile
-from bank_wrangler.bank.common import FirefoxDownloadDriver, fidelity_login
+from bank_wrangler.bank.common import (
+    FirefoxDownloadDriver,
+    fidelity_login,
+    add_balance_correcting_transaction,
+)
 from bank_wrangler.config import ConfigField
 from bank_wrangler import schema
 from selenium.webdriver.common.by import By
@@ -76,6 +80,15 @@ def _download(config, tempdir):
     selector = template.format(lastfour.value)
     driver.find_element_by_css_selector(selector).click()
 
+    # Grab the balance.
+    # Make it negative since this is what we owe.
+    balance = ('-' +
+               driver.find_element_by_xpath("//*[contains(text(), 'Current Balance')]")
+               .find_element_by_class_name('green-value')
+               .text
+               .replace('$', '')
+               .replace(',', ''))
+
     # Next we want to click the View Transactions link. But clicking it too soon
     # does nothing. Use time.sleep since the other obvious fixes didn't work.
     clickme = WebDriverWait(driver, 30).until(
@@ -99,7 +112,7 @@ def _download(config, tempdir):
 
     csv_path = driver.grab_download('download.csv', timeout_seconds=30)
     driver.quit()
-    return csv_path
+    return csv_path, balance
 
 
 def fetch(config, fileobj):
@@ -114,13 +127,15 @@ def fetch(config, fileobj):
     account_name = f'Fidelity Visa {lastfour.value}'
     fileobj.write(account_name + '\n')
     with tempfile.TemporaryDirectory() as tempdir:
-        csv_path = _download(config, tempdir)
+        csv_path, balance = _download(config, tempdir)
+        fileobj.write(balance + '\n')
         with open(csv_path, 'r') as csv_file:
             shutil.copyfileobj(csv_file, fileobj)
 
 
 def transactions(fileobj):
     account_name = fileobj.readline().rstrip('\n')
+    balance = Decimal(fileobj.readline().rstrip('\n'))
     result = schema.TransactionModel(schema.COLUMNS)
     lines = list(csv.reader(fileobj))[1:]
     for date, transaction_type, description, _, signed_amount_str in lines:
@@ -140,6 +155,7 @@ def transactions(fileobj):
             schema.Date(year, month, day),
             schema.String(description),
             schema.Dollars(signed_amount.copy_abs()))
+    add_balance_correcting_transaction(name(), account_name, balance, result)
     return result
 
 
