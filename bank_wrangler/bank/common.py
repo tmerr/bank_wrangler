@@ -90,3 +90,7 @@ def add_balance_correcting_transaction(bankname, account, real_balance, transact
             schema.Dollars(correction)
         )
     assert real_balance == _compute_balance(account, transactions)
+
+
+def assert_issubset(small, large):
+    assert set(small).issubset(large), "{} must be a subset of {}".format(small, large)

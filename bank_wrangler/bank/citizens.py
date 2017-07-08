@@ -9,6 +9,7 @@ from bank_wrangler import schema
 from bank_wrangler.bank.common import (
     FirefoxDownloadDriver,
     add_balance_correcting_transaction,
+    assert_issubset,
 )
 
 
@@ -163,5 +164,9 @@ def transactions(fileobj):
 
 
 def accounts(fileobj):
-    lines = list(csv.reader(fileobj))[1:]
-    return {'Citizens {}'.format(account_type) for _, _, account_type, *_ in lines}
+    jsonbalances, _csv_header, *csvlines = iter(fileobj)
+    all_accounts = json.loads(jsonbalances).keys()
+    tabulated_accounts = {'Citizens {}'.format(account_type)
+                          for _, _, account_type, *_ in csv.reader(csvlines)}
+    assert_issubset(tabulated_accounts, all_accounts)
+    return all_accounts
