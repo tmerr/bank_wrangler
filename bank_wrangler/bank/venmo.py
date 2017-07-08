@@ -9,6 +9,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support.expected_conditions import title_contains
 from bank_wrangler.config import ConfigField
+from bank_wrangler.bank.common import compute_balance
 from bank_wrangler import schema
 
 
@@ -78,9 +79,14 @@ def fetch(config, fileobj):
 
 def transactions(fileobj):
     result = schema.TransactionModel(schema.COLUMNS)
-    fileobj.readline()
+    account = fileobj.readline().rstrip('\n')
     data = json.load(fileobj)['data']
+
+    # not sure if this is a valid assumption, but i'd rather wait for
+    # it to break than introduce maybe dead code for injecting a
+    # a starting balance.
     assert data['start_balance'] == 0
+
     for transaction in data['transactions']:
         date, _ = transaction['datetime_created'].split('T')
         year, month, day = map(int, date.split('-'))
@@ -108,6 +114,7 @@ def transactions(fileobj):
             schema.Date(year, month, day),
             schema.String(transaction['note']),
             schema.Dollars(transaction['amount']))
+    assert compute_balance(account, result) == data['end_balance']
     return result
 
 

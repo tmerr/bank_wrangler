@@ -60,7 +60,7 @@ def _oldest_transaction_date(transactions):
     return min(t[date_column] for t in transactions)
 
 
-def _compute_balance(account, transactions):
+def compute_balance(account, transactions):
     result = Decimal('0')
     from_column = transactions.columns.index('from')
     to_column = transactions.columns.index('to')
@@ -75,7 +75,7 @@ def _compute_balance(account, transactions):
 
 
 def add_balance_correcting_transaction(bankname, account, real_balance, transactions):
-    correction = real_balance - _compute_balance(account, transactions)
+    correction = real_balance - compute_balance(account, transactions)
     frm, to = schema.String('Universe'), schema.String(account)
     if correction != 0:
         if correction < 0:
@@ -89,7 +89,7 @@ def add_balance_correcting_transaction(bankname, account, real_balance, transact
             schema.String('Balance correction'),
             schema.Dollars(correction)
         )
-    assert real_balance == _compute_balance(account, transactions)
+    assert real_balance == compute_balance(account, transactions)
 
 
 def assert_issubset(small, large):
