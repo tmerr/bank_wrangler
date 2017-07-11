@@ -88,3 +88,6 @@ class MockIO(InitializationMixin):
 
     def data_exists(self, key):
         return key in self.bank
+
+    def write_report(self, file_dictionary):
+        raise NotImplementedError

@@ -1,4 +1,5 @@
 import os
+import shutil
 from atomicwrites import atomic_write
 
 
@@ -70,6 +71,17 @@ class FileIO(InitializationMixin):
 
     def data_exists(self, key):
         return os.path.exists(self._datapath(key))
+
+    def write_report(self, file_dictionary):
+        try:
+            shutil.rmtree(os.path.join(self.rootpath, 'report'))
+        except FileNotFoundError:
+            pass
+        os.mkdir(os.path.join(self.rootpath, 'report'))
+        for filename, datastring in file_dictionary.items():
+            path = os.path.join(self.rootpath, 'report', filename)
+            with open(path, 'w') as f:
+                f.write(datastring)
 
     def initialize(self, empty_vault):
         try:
