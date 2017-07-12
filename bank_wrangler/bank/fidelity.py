@@ -42,6 +42,7 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException
 
 
 def name():
@@ -104,10 +105,17 @@ def _download(config, tempdir):
     wait.until(EC.element_to_be_clickable(target)).click()
 
     # Set the date range and wait for the new content to load.
-    driver.find_element_by_id('dropdown_dateRangeId').click()
-    wait = WebDriverWait(driver, 5)
-    target = (By.XPATH, '//*[@title="All data available"]')
-    wait.until(EC.element_to_be_clickable(target)).click()
+    for attempt in range(3):
+        driver.find_element_by_id('dropdown_dateRangeId').click()
+        wait = WebDriverWait(driver, 2)
+        target = (By.XPATH, '//*[@title="All data available"]')
+        try:
+            wait.until(EC.element_to_be_clickable(target)).click()
+            break
+        except TimeoutException:
+            if attempt == 2:
+                raise
+
     target = "//*[contains(text(), '{}')]".format('Total for all transactions:')
     WebDriverWait(driver, 10).until(
         EC.visibility_of_element_located((By.XPATH, target)))
