@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+$INCLUDES$
+</head>
+<body>
+    <div>
+        <canvas id="chartcanvas"></canvas>
+    </div>
+    <script>
+        const ctx = document.getElementById("chartcanvas");
+        const spec = chartConfig(transactionModel);
+        const chart = new Chart(ctx, spec);
+    </script>
+</body>
+</html>

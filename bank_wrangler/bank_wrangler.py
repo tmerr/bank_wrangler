@@ -2,6 +2,7 @@
 
 import sys
 import os
+from itertools import chain
 from getpass import getpass
 import click
 import bank_wrangler.config
@@ -185,6 +186,11 @@ def list_transactions(name):
         print('\n'.join('    ' + error for error in errors))
 
 
+def _configs_by_key(passphrase, iolayer):
+    return {key: bank_wrangler.config.get(key, passphrase, iolayer)
+            for key in bank_wrangler.config.keys(iolayer)}
+
+
 @cli.command(name='list-all')
 def list_all_transactions():
     """List all transactions"""
@@ -194,11 +200,8 @@ def list_all_transactions():
 
     transactions0 = schema.TransactionModel(schema.COLUMNS)
 
-    configs_by_key = {}
     try:
-        for key in bank_wrangler.config.keys(iolayer):
-            conf = bank_wrangler.config.get(key, passphrase, iolayer)
-            configs_by_key[key] = conf
+        for key, conf in _configs_by_key(passphrase, iolayer).items():
             for row in aggregate.list_transactions(key, conf, iolayer):
                 transactions0.ingest_row(*row)
         accounts_by_bank = aggregate.accounts_by_bank(configs_by_key, iolayer)
@@ -218,11 +221,23 @@ def list_all_transactions():
         print('\n'.join('    ' + error for error in errors2))
 
 
-@cli.command()
-def show():
-    """Visualize data"""
+@cli.command(name='report')
+def report_cmd():
     _assert_initialized()
-    #passphrase = _promptpass()
+    iolayer = FileIO(os.getcwd())
+    passphrase = _promptpass()
+
+    configs_by_key = _configs_by_key(passphrase, iolayer)
+    transactions = schema.TransactionModel(schema.COLUMNS)
+    try:
+        for key, conf in _configs_by_key(passphrase, iolayer).items():
+            for row in aggregate.list_transactions(key, conf, iolayer):
+                transactions.ingest_row(*row)
+    except aggregate.BankException:
+        raise
+    accounts_by_bank = aggregate.accounts_by_bank(configs_by_key, iolayer)
+    accounts = chain(*accounts_by_bank.values())
+    iolayer.write_report(report.generate(transactions, accounts))
 
 
 if __name__ == '__main__':
