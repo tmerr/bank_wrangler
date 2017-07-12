@@ -199,9 +199,9 @@ def list_all_transactions():
     passphrase = _promptpass()
 
     transactions0 = schema.TransactionModel(schema.COLUMNS)
-
+    configs_by_key = _configs_by_key(passphrase, iolayer)
     try:
-        for key, conf in _configs_by_key(passphrase, iolayer).items():
+        for key, conf in configs_by_key.items():
             for row in aggregate.list_transactions(key, conf, iolayer):
                 transactions0.ingest_row(*row)
         accounts_by_bank = aggregate.accounts_by_bank(configs_by_key, iolayer)
