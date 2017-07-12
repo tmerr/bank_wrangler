@@ -8,7 +8,7 @@ import bank_wrangler.config
 from bank_wrangler.config import Config
 from bank_wrangler.fileio import FileIO
 from bank_wrangler import fileio
-from bank_wrangler import aggregate, rules, schema
+from bank_wrangler import aggregate, deduplicate, rules, schema, report
 
 
 def _assert_initialized():
@@ -201,8 +201,9 @@ def list_all_transactions():
             configs_by_key[key] = conf
             for row in aggregate.list_transactions(key, conf, iolayer):
                 transactions0.ingest_row(*row)
+        accounts_by_bank = aggregate.accounts_by_bank(configs_by_key, iolayer)
         transactions1, errors1 = aggregate.map_rules(_rules_func(iolayer), transactions0)
-        transactions2 = aggregate.combine(configs_by_key, transactions1, iolayer)
+        transactions2 = deduplicate.deduplicate(transactions1, accounts_by_bank)
         transactions3, errors2 = aggregate.map_rules(_final_rules_func(iolayer), transactions2)
     except aggregate.BankException:
         raise

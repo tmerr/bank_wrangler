@@ -8,7 +8,6 @@ from itertools import chain
 from datetime import datetime
 from bank_wrangler.bank import citizens, fidelity, fidelity_visa, venmo
 from bank_wrangler import schema
-from bank_wrangler.aggregate_utils import deduplicate
 
 
 class BankException(Exception):
@@ -89,19 +88,18 @@ def map_rules(rules_function, transactions):
     return result, error_messages
 
 
-def combine(configs_by_key, transactions, iolayer):
+def accounts_by_bank(configs_by_key, iolayer):
     """
-    Combine transactions across all bank configs.
+    Make a dictionary mapping from bank name to set of accounts.
 
     Raises:
         BankException
     """
-    bank_to_accounts_map = {}
+    result = {}
     for key, config in configs_by_key.items():
         with iolayer.data_reader(key) as f:
             try:
-                bank_to_accounts_map[config.bank] = _pick_module(config).accounts(f)
+                result[config.bank] = _pick_module(config).accounts(f)
             except Exception as e:
                 raise BankException from e
-
-    return deduplicate(transactions, bank_to_accounts_map)
+    return result
