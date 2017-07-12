@@ -1,5 +1,5 @@
 from nose.tools import assert_equals, assert_in
-from bank_wrangler import aggregate_utils
+from bank_wrangler import deduplicate
 from bank_wrangler import schema
 
 
@@ -23,7 +23,7 @@ def test_deduplicate_ok():
                      schema.String('same transaction!'),
                      schema.Dollars('10.00'))
 
-    deduped = aggregate_utils.deduplicate(model, bank_to_accounts_map)
+    deduped = deduplicate.deduplicate(model, bank_to_accounts_map)
 
     assert_equals(len(deduped), 1)
 
@@ -51,7 +51,7 @@ def test_deduplicate_unmatched_missing():
                      schema.String('a transaction'),
                      schema.Dollars('10.00'))
 
-    deduped = aggregate_utils.deduplicate(model, bank_to_accounts_map)
+    deduped = deduplicate.deduplicate(model, bank_to_accounts_map)
 
     expected = [(
         schema.String('bankA'),
@@ -84,7 +84,7 @@ def test_deduplicate_unmatched_typo():
                      schema.String('same transaction!'),
                      schema.Dollars('10.00'))
 
-    deduped = aggregate_utils.deduplicate(model, bank_to_accounts_map)
+    deduped = deduplicate.deduplicate(model, bank_to_accounts_map)
     snapshot = deduped.view_snapshot()
     assert_equals(len(snapshot), 2)
 
@@ -127,7 +127,7 @@ def test_deduplicate_both_unknown():
                      schema.String('same transaction!'),
                      schema.Dollars('10.00'))
 
-    deduped = aggregate_utils.deduplicate(model, bank_to_accounts_map)
+    deduped = deduplicate.deduplicate(model, bank_to_accounts_map)
     snapshot = deduped.view_snapshot()
     assert_equals(len(snapshot), 2)
 
