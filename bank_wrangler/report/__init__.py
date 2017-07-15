@@ -37,20 +37,23 @@ def _generate_pages(html_path, css_names, js_names):
         trim_blocks=True,
     )
 
+    pages = {
+        'Bank Wrangler': 'index.html',
+        'List': 'list.html',
+        'Balance': 'balance.html',
+        'Spending': 'spending.html',
+    }
+
     # used by base.html
     env.globals = {
         'cssimports': css_names,
         'jsimports': js_names,
-        'pages': [
-            {'name': 'Bank Wrangler', 'url': 'index.html'},
-            {'name': 'List', 'url': 'list.html'},
-            {'name': 'Balance', 'url': 'balance.html'},
-            {'name': 'Spending', 'url': '#'},
-        ],
+        'pages': [{'name': title, 'url': filename}
+                  for title, filename in pages.items()],
     }
 
     return {filename: env.get_template(filename).render(selectedpage=filename)
-            for filename in ['index.html', 'list.html', 'balance.html']}
+            for filename in pages.values()}
 
 
 def generate(transactionmodel, accounts: Iterable[str]):
