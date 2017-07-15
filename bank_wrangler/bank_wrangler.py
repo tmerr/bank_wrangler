@@ -191,13 +191,7 @@ def _configs_by_key(passphrase, iolayer):
             for key in bank_wrangler.config.keys(iolayer)}
 
 
-@cli.command(name='list-all')
-def list_all_transactions():
-    """List all transactions"""
-    _assert_initialized()
-    iolayer = FileIO(os.getcwd())
-    passphrase = _promptpass()
-
+def _list_all_transactions(iolayer, passphrase):
     transactions0 = schema.TransactionModel(schema.COLUMNS)
     configs_by_key = _configs_by_key(passphrase, iolayer)
     try:
@@ -207,11 +201,26 @@ def list_all_transactions():
         accounts_by_bank = aggregate.accounts_by_bank(configs_by_key, iolayer)
         transactions1, errors1 = aggregate.map_rules(_rules_func(iolayer), transactions0)
         transactions2 = deduplicate.deduplicate(transactions1, accounts_by_bank)
-        transactions3, errors2 = aggregate.map_rules(_final_rules_func(iolayer), transactions2)
+        transactions3 = schema.TransactionModel(schema.COLUMNS_WITH_CATEGORY)
+        for row in transactions2:
+            transactions3.ingest_row(*row, schema.String(''))
+        transactions4, errors2 = aggregate.map_rules(_final_rules_func(iolayer), transactions3)
     except aggregate.BankException:
         raise
 
-    print(str(transactions3))
+    return transactions4, errors1, errors2
+
+
+
+@cli.command(name='list-all')
+def list_all_transactions():
+    """List all transactions"""
+    _assert_initialized()
+    iolayer = FileIO(os.getcwd())
+    passphrase = _promptpass()
+    transactions, errors1, errors2 = _list_all_transactions(iolayer, passphrase)
+
+    print(str(transactions))
     if len(errors1) > 0:
         print('\ndetected conflicting rule applications:')
         print('\n'.join('    ' + error for error in errors1))
@@ -228,15 +237,11 @@ def report_cmd():
     passphrase = _promptpass()
 
     configs_by_key = _configs_by_key(passphrase, iolayer)
-    transactions = schema.TransactionModel(schema.COLUMNS)
-    try:
-        for key, conf in _configs_by_key(passphrase, iolayer).items():
-            for row in aggregate.list_transactions(key, conf, iolayer):
-                transactions.ingest_row(*row)
-    except aggregate.BankException:
-        raise
     accounts_by_bank = aggregate.accounts_by_bank(configs_by_key, iolayer)
     accounts = chain(*accounts_by_bank.values())
+
+    transactions, _, _ = _list_all_transactions(iolayer, passphrase)
+
     iolayer.write_report(report.generate(transactions, accounts))
 
 

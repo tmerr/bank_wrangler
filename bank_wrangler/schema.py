@@ -148,5 +148,5 @@ COLUMNS = IndexedOrderedDict((
 ))
 
 
-COLUMNS_WITH_CATEGORY = OrderedDict(COLUMNS)
+COLUMNS_WITH_CATEGORY = IndexedOrderedDict(COLUMNS)
 COLUMNS_WITH_CATEGORY['category'] = String
