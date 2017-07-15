@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+{% for name in cssimports %}
+    <link rel="stylesheet" type="text/css" href="{{ name }}">
+{% endfor %}
+{% for name in jsimports %}
+    <script type="text/javascript" charset="utf8" src="{{ name }}"></script>
+{% endfor %}
+</head>
+<body>
+    <div id="menu" class="pure-menu pure-menu-horizontal">
+        <ul class="pure-menu-list">
+        {% for page in pages %}
+            <li class="pure-menu-item">
+                <a href="{{ page.url }}" class="pure-menu-link">{{ page.name }}</a>
+            </li>
+        {% endfor %}
+        </ul>
+    </div>
+    <div id="content">
+        {% block content %}
+        {% endblock %}
+    </div>
+</body>
+</html>

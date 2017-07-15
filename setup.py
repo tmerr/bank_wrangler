@@ -13,6 +13,7 @@ setup(name='bank_wrangler',
           'rncryptor',
           'atomicwrites',
           'selenium',
+          'jinja2',
       ],
       scripts=['bin/bank-wrangler'],
       zip_safe=False)
