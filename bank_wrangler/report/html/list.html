@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block extrastyle %}
+#thetable_wrapper {
+    font-size: 70%;
+}
+{% endblock %}
+{% block content %}
+    <table id="thetable" class="display cell-border" width="100%"></table>
+    <script>
+    $(document).ready(() => {
+        $("#thetable").DataTable({
+            data: transactionModel.transactions,
+            columns: transactionModel.columns.map(name => { return { title: name }; }),
+            bPaginate: false,
+        });
+    });
+    </script>
+{% endblock %}

@@ -43,14 +43,14 @@ def _generate_pages(html_path, css_names, js_names):
         'jsimports': js_names,
         'pages': [
             {'name': 'Bank Wrangler', 'url': 'index.html'},
-            {'name': 'List', 'url': '#'},
+            {'name': 'List', 'url': 'list.html'},
             {'name': 'Balance', 'url': 'balance.html'},
             {'name': 'Spending', 'url': '#'},
         ],
     }
 
-    return {filename: env.get_template(filename).render()
-            for filename in ['index.html', 'balance.html']}
+    return {filename: env.get_template(filename).render(selectedpage=filename)
+            for filename in ['index.html', 'list.html', 'balance.html']}
 
 
 def generate(transactionmodel, accounts: Iterable[str]):

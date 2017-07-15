@@ -8,12 +8,16 @@
 {% for name in jsimports %}
     <script type="text/javascript" charset="utf8" src="{{ name }}"></script>
 {% endfor %}
+<style>
+{% block extrastyle %}
+{% endblock %}
+</style>
 </head>
 <body>
     <div id="menu" class="pure-menu pure-menu-horizontal">
         <ul class="pure-menu-list">
         {% for page in pages %}
-            <li class="pure-menu-item">
+            <li class="pure-menu-item {% if selectedpage == page.url %}pure-menu-selected{% endif %}">
                 <a href="{{ page.url }}" class="pure-menu-link">{{ page.name }}</a>
             </li>
         {% endfor %}
