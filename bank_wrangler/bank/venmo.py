@@ -3,6 +3,7 @@ import sys
 import glob
 import json
 from datetime import datetime
+from decimal import Decimal
 from selenium.webdriver.firefox.firefox_profile import FirefoxProfile
 from selenium.webdriver import Firefox
 from selenium.webdriver.common.keys import Keys
@@ -80,7 +81,7 @@ def fetch(config, fileobj):
 def transactions(fileobj):
     result = schema.TransactionModel(schema.COLUMNS)
     account = fileobj.readline().rstrip('\n')
-    data = json.load(fileobj)['data']
+    data = json.load(fileobj, parse_float=Decimal)['data']
 
     # not sure if this is a valid assumption, but i'd rather wait for
     # it to break than introduce maybe dead code for injecting a
