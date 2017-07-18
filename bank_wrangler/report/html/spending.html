@@ -1,3 +1,52 @@
 {% extends "base.html" %}
+{% block extrastyle %}
+    .padbox1 {
+        padding: 1em;
+    }
+    #dateslider {
+        margin-top: 0.5em;
+        margin-bottom: 0.5em;
+    }
+{% endblock %}
 {% block content %}
+    <div class="pure-g">
+        <div id="chartholder" class="pure-u-1-3">
+            <div class="padbox1">
+                <div id="dateslider" class="sliders"></div>
+                <div>
+                    Start date: <span id="displaylow"></span>
+                </div>
+                <div>
+                    End date: <span id="displayhigh"></span>
+                </div>
+                <canvas id="chartcanvas"></canvas>
+            </div>
+        </div>
+        <div class="pure-u-1-3">
+        </div>
+        <div class="pure-u-1-3">
+        </div>
+    </div>
+    <script>
+        const doughnut = new Chart(
+            document.getElementById("chartcanvas"),
+            window.doughnutConfig(
+                window.spendingByCategory(transactionModel)
+            ),
+        );
+        noUiSlider.create(
+            document.getElementById("dateslider"),
+            window.sliderConfig(transactionModel),
+        );
+        window.connectSliderToDisplays(
+            document.getElementById("dateslider"),
+            document.getElementById("displaylow"),
+            document.getElementById("displayhigh"),
+        );
+        window.connectSliderToChart(
+            document.getElementById("dateslider"),
+            doughnut,
+            transactionModel,
+        );
+    </script>
 {% endblock %}
