@@ -1,13 +1,7 @@
-"""
-Aggregate transactions across banks.
-"""
+"""Aggregate transactions across banks"""
 
 
-import sys
-from itertools import chain
-from datetime import datetime
 from bank_wrangler.bank import citizens, fidelity, fidelity_visa, venmo
-from bank_wrangler import schema
 
 
 class BankException(Exception):
@@ -51,41 +45,6 @@ def list_transactions(key, config, iolayer):
             return bank.transactions(f)
         except Exception as e:
             raise BankException from e
-
-
-def _transform(transaction, env, columns):
-    result = list(transaction)
-    for key, val in env.items():
-        if key in columns:
-            i = columns.index(key)
-            result[i] = val
-        else:
-            print(f'ignoring unknown rule assignment to {key}', sys.stderr)
-    return result
-
-
-def map_rules(rules_function, transactions):
-    """
-    Map the rules function to every transaction.
-
-    Params:
-        rules_function: takes a transaction and returns a tuple (env, conflicts), where
-            env: a dict from column names to schema.Entry
-            conflicts: a dict from column names to sets of schema.Entry
-        transactions: a schema.TransactionModel
-
-    Returns:
-        a schema.TransactionModel, and a list of conflict error messages.
-    """
-    columns = transactions.get_columns()
-    result = schema.TransactionModel(columns)
-    error_messages = []
-    for t in transactions:
-        env, conflicts = rules_function(t)
-        if conflicts:
-            error_messages.append(f'rules conflict: {conflicts}')
-        result.ingest_row(*_transform(t, env, columns))
-    return result, error_messages
 
 
 def accounts_by_bank(configs_by_key, iolayer):

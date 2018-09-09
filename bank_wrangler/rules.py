@@ -2,7 +2,7 @@ import pyparsing as pp
 import operator
 from collections import defaultdict
 import re
-from bank_wrangler import schema, tresult
+from bank_wrangler import schema
 
 
 RULES_FILE = 'rules.conf'
@@ -44,83 +44,86 @@ def _build_parser():
 _parser = _build_parser()
 
 
-def parse(text):
-    result = []
-    for i, line in enumerate(text.splitlines()):
-        if len(line.strip()) != 0:
-            try:
-                result.append(
-                    tresult.ok((i, _parser.parseString(line)))
-                )
-            except pp.ParseException as e:
-                result.append(
-                    tresult.err(f'parse error at {e.lineno}:{e.col}: {e}')
-                )
-    return result
-
-
-def type_check_line(columns, lineno, ast_line):
-    ast_conditions, ast_assignments = [], []
-    for left, op, right in ast_line:
-        # Make sure columns exist and types line up
+def parse_line(columns, lineno, line):
+    conditions = []
+    assignments = []
+    try:
+        tokens = _parser.parseString(line)
+    except pp.ParseException as e:
+        return None, f'parse error at {e.lineno}:{e.col}: {e}'
+    for left, op, right in tokens:
         if op in operator_map:
             try:
                 t0 = columns[left].entrytype()
             except KeyError:
                 error = f'type error at line {lineno}: column does not exist: {left}'
-                return tresult.err(error)
+                return None, error
             t1 = right.entrytype()
 
             if t0 != t1:
-                error = f'type error at line {lineno}: type mistmatch in {columns[left].entrytype()} {op} {right}'
-                return tresult.err(error)
+                err = f'type error at line {lineno}: type mistmatch in {columns[left].entrytype()} {op} {right}'
+                return None, err
 
             if op == '~~' and t0 != 'String':
-                error = f'type error at line {lineno}: ~~ operator not supported on {t1} entrytype'
-                return tresult.err(error)
+                err = f'type error at line {lineno}: ~~ operator not supported on {t1} entrytype'
+                return None, err
 
-            # Use the column's index instead of name in the type checked AST.
-            # Also substitute in the actual comparison function.
             index = columns.index(left)
-            ast_conditions.append((index, operator_map[op], right))
+            conditions.append((index, op, right))
         else:
             assert op == '='
             if columns[left].entrytype() != right.entrytype():
-                error = f'type error at line {lineno}: type mismatch in {left} {op} {right}'
-                return tresult.err(error)
-            ast_assignments.append((left, right))
-
-    new_ast = (ast_conditions, ast_assignments)
-    return tresult.ok(new_ast)
+                err = f'type error at line {lineno}: type mismatch in {left} {op} {right}'
+                return None, err
+            assignments.append((left, right))
+    return (conditions, assignments), None
 
 
-def parse_and_check(columns, text):
-    return [result.map(lambda i_line: type_check_line(columns, *i_line))
-            for result in parse(text)]
+def parse(columns, text):
+    parsed = []
+    errs = []
+    for i, line in enumerate(text.splitlines()):
+        line = line.strip()
+        if len(line) == 0:
+            continue
+        ok, err = parse_line(columns, i, line)
+        if err:
+            errs.append(err)
+        else:
+            parsed.append(ok)
+    return parsed, errs
 
 
-def compile(lines):
-    """
-    Translate the type checked ast lines into a python function object
-    f: transaction -> (env, conflicts)
-    """
-    oklines = [line.ok for line in lines if line.has_ok()]
+def _apply_one(parsed, transaction, columns, errlog):
+    env = {}
+    conflicts = defaultdict(set)
+    for conditions, assignments in parsed:
+        if all(operator_map[binop](transaction[col], literal)
+               for col, binop, literal in conditions):
+            for left, right in assignments:
+                if left in env and env[left] != right:
+                    conflicts[left].add(right)
+                else:
+                    env[left] = right
+    for c in conflicts:
+        conflicts[c].add(env[c])
+        del env[c]
+    if conflicts:
+        errlog.append(f'rules conflict: {conflicts}')
+    result = list(transaction)
+    for key, val in env.items():
+        if key in columns:
+            result[columns.index(key)] = val
+        else:
+            errlog.append(f'ignoring assignment to unknown column {key}')
+    return result
 
-    def f(transaction):
-        env = {}
-        conflicts = defaultdict(set)
-        for line in oklines:
-            conditions, assignments = line
-            if all(binop(transaction[col], literal)
-                   for col, binop, literal in conditions):
-                for left, right in assignments:
-                    if left in env and env[left] != right:
-                        conflicts[left].add(right)
-                    else:
-                        env[left] = right 
-        for c in conflicts:
-            conflicts[c].add(env[c])
-            del env[c]
-        return env, dict(conflicts)
 
-    return f
+def apply(parsed, transactions):
+    """Apply rules to the transactions."""
+    errlog = []
+    columns = transactions.get_columns()
+    result = schema.TransactionModel(columns)
+    for t in transactions:
+        result.ingest_row(*_apply_one(parsed, t, columns, errlog))
+    return result, errlog

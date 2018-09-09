@@ -3,75 +3,118 @@ from bank_wrangler.schema import IndexedOrderedDict
 from nose.tools import assert_equals
 
 
-def test_parse_success():
-    ok0 = rules.parse('hello >= 1992/06/25')[0].ok
-    ok1 = rules.parse('hello >= $32.49')[0].ok
-    ok2 = rules.parse('hello >= "ayyy sup \\" fam", wat = $30.25')[0].ok
+def check_parse(tc):
+    lines, errs = rules.parse(tc['columns'], tc['text'])
+    assert len(errs) == tc['want_errs']
+    assert len(lines) == tc['want_lines']
 
 
-def test_parse_fail_1():
-    err0 = rules.parse('hello hello hello')[0].err
-    assert len(err0) > 0
-
-    err1 = rules.parse('HJI^&*()%^&&&')[0].err
-    assert len(err1) > 0
-
-
-def test_parse_fail_2():
-    text = 'first == "match this", blah blah try to parse me!'
-    err0 = rules.parse(text)[0].err
-    assert len(err0) > 0
-
-
-COLUMNS = IndexedOrderedDict({
-    'first': schema.String,
-    'second': schema.Dollars,
-})
-
-
-def test_compile_1():
-    text = 'first == "match this", first = "bucket"'
-    ast = rules.parse_and_check(COLUMNS, text)
-    f = rules.compile(ast)
-    transaction = [
-        schema.String('match this'),
-        schema.Dollars('$32.53'),
+def test_parse():
+    testcases = [
+        {
+            'columns': IndexedOrderedDict({'mycolumn': schema.Date}),
+            'text': 'mycolumn >= 1992/06/25',
+            'want_lines': 1,
+            'want_errs': 0,
+        },
+        {
+            'columns': IndexedOrderedDict({'mycolumn': schema.Dollars}),
+            'text': 'mycolumn >= $32.49',
+            'want_lines': 1,
+            'want_errs': 0,
+        },
+        {
+            'columns': IndexedOrderedDict({
+                'strcolumn': schema.String,
+                'dollarcolumn': schema.Dollars,
+            }),
+            'text': 'strcolumn >= "ayyy sup \\" fam", dollarcolumn = $30.25',
+            'want_lines': 1,
+            'want_errs': 0,
+        },
+        {
+            'columns': IndexedOrderedDict({'mycolumn': schema.String}),
+            'text': 'hello hello hello',
+            'want_lines': 0,
+            'want_errs': 1,
+        },
+        {
+            'columns': IndexedOrderedDict({'mycolumn': schema.String}),
+            'text': 'HJI^&*()%^&&&',
+            'want_lines': 0,
+            'want_errs': 1,
+        },
+        {
+            'columns': IndexedOrderedDict({'mycolumn': schema.String}),
+            'text': 'first == "match this", blah blah try to parse me!',
+            'want_lines': 0,
+            'want_errs': 1,
+        },
     ]
-    expected = (
-        {'first': schema.String('bucket')},
-        {},
-    )
-    assert_equals(f(transaction), expected)
+    for tc in testcases:
+        check_parse(tc)
 
 
-def test_compile_2():
-    text = '''
-        first == "match this", first = "A"
-        second >= $10.24, first = "B"
-    '''
-    ast = rules.parse_and_check(COLUMNS, text)
-    f = rules.compile(ast)
-    transaction = [
-        schema.String('match this'),
-        schema.Dollars('$32.53'),
+def check_compile(tc):
+    got, errlog = rules.apply(tc['parsed'], tc['input'])
+    assert list(got) == list(tc['want'])
+    assert len(errlog) == tc['want_errs']
+
+
+def test_compile():
+    columns = IndexedOrderedDict({
+        'first': schema.String,
+        'second': schema.Dollars,
+    })
+    testcases = [
+        {
+            'parsed': rules.parse(columns, 'first == "match this", first = "bucket"')[0],
+            'input': schema.TransactionModel(
+                columns,
+                [
+                    (schema.String('match this'), schema.Dollars('$32.53')),
+                ]),
+            'want': schema.TransactionModel(
+                columns,
+                [
+                    (schema.String('bucket'), schema.Dollars('$32.53')),
+                ]),
+            'want_errs': 0,
+        },
+        {
+            'parsed': rules.parse(columns, '''
+                first == "match this", first = "A"
+                second >= $10.24, first = "B"
+                ''')[0],
+            'input': schema.TransactionModel(
+                columns,
+                [
+                    (schema.String('match this'), schema.Dollars('$32.53')),
+                ]),
+            'want': schema.TransactionModel(
+                columns,
+                [
+                    (schema.String('match this'), schema.Dollars('$32.53')),
+                ]),
+            'want_errs': 1,
+        },
+        {
+            'parsed': rules.parse(columns, '''
+                first == "match this", first = "A"
+                second >= $10.24, first = "B"
+                ''')[0],
+            'input': schema.TransactionModel(
+                columns,
+                [
+                    (schema.String('dont match me'), schema.Dollars('$0.53')),
+                ]),
+            'want': schema.TransactionModel(
+                columns,
+                [
+                    (schema.String('dont match me'), schema.Dollars('$0.53')),
+                ]),
+            'want_errs': 0,
+        },
     ]
-    expected = (
-        {},
-        {'first': {schema.String('A'), schema.String('B')}},
-    )
-    assert f(transaction) == expected
-
-
-def test_compile_no_match():
-    text = '''
-        first == "match this", first = "A"
-        second >= $10.24, first = "B"
-    '''
-    ast = rules.parse_and_check(COLUMNS, text)
-    f = rules.compile(ast)
-    transaction = [
-        schema.String('dont match me'),
-        schema.Dollars('$0.53'),
-    ]
-    expected = ({}, {})
-    assert f(transaction) == expected
+    for tc in testcases:
+        check_compile(tc)

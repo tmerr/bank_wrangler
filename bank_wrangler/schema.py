@@ -90,9 +90,12 @@ class TransactionModel():
     used to keep track of the table of transactions using
     data ingested from arbitrary sources.
     """
-    def __init__(self, columns):
+    def __init__(self, columns, tlist=None):
         self.columns = IndexedOrderedDict(columns)
         self.transactions = []
+        if tlist is not None:
+            for row in tlist:
+                self.ingest_row(*row)
 
     def clear(self):
         self.transactions = []

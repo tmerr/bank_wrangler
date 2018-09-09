@@ -150,18 +150,10 @@ def check_rules():
     pass
 
 
-def _rules_func(iolayer):
-    with iolayer.rules_reader() as f:
-        text = f.read()
-    checked = rules.parse_and_check(schema.COLUMNS, text)
-    return rules.compile(checked)
-
-
-def _final_rules_func(iolayer):
-    with iolayer.final_rules_reader() as f:
-        text = f.read()
-    checked = rules.parse_and_check(schema.COLUMNS_WITH_CATEGORY, text)
-    return rules.compile(checked)
+def print_indented(label, errs):
+    if len(errs) > 0:
+        print('\n{}:'.format(label))
+        print('\n'.join('    ' + err for err in errs))
 
 
 @cli.command(name='list')
@@ -170,6 +162,10 @@ def list_transactions(name):
     """List transactions"""
     _assert_initialized()
     iolayer = FileIO(os.getcwd())
+    with iolayer.rules_reader() as f:
+        parsed, errs = rules.parse(schema.COLUMNS, f.read())
+    if len(errs) != 0:
+        print_intended('cannot parse rules file', errs)
     passphrase = _promptpass()
     cfg = bank_wrangler.config.get(name, passphrase, iolayer)
     try:
@@ -177,14 +173,9 @@ def list_transactions(name):
     except aggregate.BankException:
         raise
 
-    func = _rules_func(iolayer)
-    new_transactions, errors = aggregate.map_rules(func, transactions)
-
+    new_transactions, errs = rules.apply(parsed, transactions)
     print(str(new_transactions))
-    if len(errors) > 0:
-        print('\ndetected conflicting rule applications:')
-        print('\n'.join('    ' + error for error in errors))
-
+    print_indented('errors while applying rules', errs)
 
 def _configs_by_key(passphrase, iolayer):
     return {key: bank_wrangler.config.get(key, passphrase, iolayer)
@@ -194,23 +185,31 @@ def _configs_by_key(passphrase, iolayer):
 def _list_all_transactions(iolayer, passphrase):
     transactions0 = schema.TransactionModel(schema.COLUMNS)
     configs_by_key = _configs_by_key(passphrase, iolayer)
+    with iolayer.rules_reader() as f:
+        parsed1, e1 = rules.parse(schema.COLUMNS_WITH_CATEGORY, f.read())
+    if len(e1) != 0:
+        print_indented('cannot parse rules file', errs1)
+        sys.exit(1)
+    with iolayer.final_rules_reader() as f:
+        parsed2, e2 = rules.parse(schema.COLUMNS_WITH_CATEGORY, f.read())
+    if len(e2) != 0:
+        print_indented('cannot parse final rules file', errs1)
+        sys.exit(1)
     try:
         for key, conf in configs_by_key.items():
             for row in aggregate.list_transactions(key, conf, iolayer):
                 transactions0.ingest_row(*row)
         accounts_by_bank = aggregate.accounts_by_bank(configs_by_key, iolayer)
-        transactions1, errors1 = aggregate.map_rules(_rules_func(iolayer), transactions0)
+        transactions1, errs1 = rules.apply(parsed1, transactions0)
         transactions2 = deduplicate.deduplicate(transactions1, accounts_by_bank)
         transactions3 = schema.TransactionModel(schema.COLUMNS_WITH_CATEGORY)
         for row in transactions2:
             transactions3.ingest_row(*row, schema.String(''))
-        transactions4, errors2 = aggregate.map_rules(_final_rules_func(iolayer), transactions3)
+        transactions4, errs2 = rules.apply(parsed2, transactions3)
     except aggregate.BankException:
         raise
 
-    return transactions4, errors1, errors2
-
-
+    return transactions4, errs1, errs2
 
 @cli.command(name='list-all')
 def list_all_transactions():
@@ -218,16 +217,10 @@ def list_all_transactions():
     _assert_initialized()
     iolayer = FileIO(os.getcwd())
     passphrase = _promptpass()
-    transactions, errors1, errors2 = _list_all_transactions(iolayer, passphrase)
-
+    transactions, errs1, errs2 = _list_all_transactions(iolayer, passphrase)
     print(str(transactions))
-    if len(errors1) > 0:
-        print('\ndetected conflicting rule applications:')
-        print('\n'.join('    ' + error for error in errors1))
-
-    if len(errors2) > 0:
-        print('\ndetected conflicting rule applications:')
-        print('\n'.join('    ' + error for error in errors2))
+    print_indented('errors while applying rules', errs1)
+    print_indented('errors while applying final rules', errs2)
 
 
 @cli.command(name='report')
@@ -235,13 +228,12 @@ def report_cmd():
     _assert_initialized()
     iolayer = FileIO(os.getcwd())
     passphrase = _promptpass()
-
     configs_by_key = _configs_by_key(passphrase, iolayer)
     accounts_by_bank = aggregate.accounts_by_bank(configs_by_key, iolayer)
     accounts = chain(*accounts_by_bank.values())
-
-    transactions, _, _ = _list_all_transactions(iolayer, passphrase)
-
+    transactions, errs1, errs2 = _list_all_transactions(iolayer, passphrase)
+    print_indented('errors while applying rules', errs1)
+    print_indented('errors while applying final rules', errs2)
     iolayer.write_report(report.generate(transactions, accounts))
 
 
