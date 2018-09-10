@@ -1,3 +1,4 @@
+import datetime
 import time
 import os
 from decimal import Decimal
@@ -57,6 +58,9 @@ def fidelity_login(driver, username_string, password_string):
 
 def _oldest_transaction_date(transactions):
     date_column = transactions.columns.index('date')
+    if len(transactions) == 0:
+        now = datetime.datetime.now()
+        return schema.Date(now.year, now.month, now.day)
     return min(t[date_column] for t in transactions)
 
 
