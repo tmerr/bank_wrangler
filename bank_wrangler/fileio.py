@@ -6,20 +6,13 @@ from atomicwrites import atomic_write
 class InitializationMixin(object):
     """Sets up files relying only on read/write functions"""
 
-    def initialize(self, empty_vault):
-        for writer in (self.rules_writer,
-                       self.final_rules_writer,
-                       self.vault_keys_writer):
+    def initialize(self):
+        for writer in (self.rules_writer, self.final_rules_writer):
             with writer(overwrite=False) as f:
                 f.truncate()
-        with self.vault_writer(overwrite=False) as f:
-            f.write(empty_vault)
 
     def is_initialized(self):
-        for reader in (self.rules_reader,
-                       self.final_rules_reader,
-                       self.vault_reader,
-                       self.vault_keys_reader):
+        for reader in (self.rules_reader, self.final_rules_reader):
             try:
                 with reader() as f:
                     pass
@@ -47,18 +40,6 @@ class FileIO(InitializationMixin):
 
     def final_rules_writer(self, overwrite):
         return atomic_write(self._fullpath('final-rules'), mode='w', overwrite=overwrite)
-
-    def vault_keys_reader(self):
-        return open(self._fullpath('vault-keys'), 'r')
-
-    def vault_keys_writer(self, overwrite):
-        return atomic_write(self._fullpath('vault-keys'), mode='w', overwrite=overwrite)
-
-    def vault_reader(self):
-        return open(self._fullpath('vault'), 'rb')
-
-    def vault_writer(self, overwrite):
-        return atomic_write(self._fullpath('vault'), mode='wb', overwrite=overwrite)
 
     def _datapath(self, key):
         return self._fullpath(key) + '.data'

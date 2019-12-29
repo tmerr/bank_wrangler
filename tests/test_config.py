@@ -1,11 +1,10 @@
 import bank_wrangler
 from bank_wrangler import config
-from bank_wrangler.mockio import MockIO
 from nose.tools import assert_equals, assert_raises
+import tempfile
 
 
 def test_put_get():
-    io = MockIO()
     config_in = config.Config(
         bank = 'mybank',
         fields = [
@@ -15,24 +14,26 @@ def test_put_get():
     )
     key = 'somekey'
     vaultpass = 'abcd'
-    io.initialize(config.empty_vault(vaultpass))
-    config.put(key, config_in, vaultpass, io)
-    config_out = config.get(key, vaultpass, io)
+    with tempfile.TemporaryDirectory() as path:
+        vault = config.Vault(path)
+        vault.write_empty(vaultpass)
+        vault.put(key, config_in, vaultpass)
+        config_out = vault.get(key, vaultpass)
     assert_equals(config_in, config_out)
 
 
 def test_put_keys():
-    io = MockIO()
     bankname = 'mybank'
     bankconfig = []
     vaultpass = 'abcd'
-    io.initialize(config.empty_vault(vaultpass))
-    config.put(bankname, bankconfig, vaultpass, io)
-    assert_equals(config.keys(io), ['mybank'])
+    with tempfile.TemporaryDirectory() as path:
+        vault = config.Vault(path)
+        vault.write_empty(vaultpass)
+        vault.put(bankname, bankconfig, vaultpass)
+        assert_equals(vault.keys(), ['mybank'])
 
 
 def test_put_delete():
-    io = MockIO()
     config_in = config.Config(
         bank = 'mybank',
         fields = [
@@ -42,9 +43,11 @@ def test_put_delete():
     )
     key = 'somekey'
     vaultpass = 'abcd'
-    io.initialize(config.empty_vault(vaultpass))
-    config.put(key, config_in, vaultpass, io)
-    assert_equals(config.keys(io), ['somekey'])
-    config.delete(key, vaultpass, io)
-    assert_equals(config.keys(io), [])
-    assert_raises(KeyError, config.get, key, vaultpass, io)
+    with tempfile.TemporaryDirectory() as path:
+        vault = config.Vault(path)
+        vault.write_empty(vaultpass)
+        vault.put(key, config_in, vaultpass)
+        assert_equals(vault.keys(), ['somekey'])
+        vault.delete(key, vaultpass)
+        assert_equals(vault.keys(), [])
+        assert_raises(KeyError, vault.get, key, vaultpass)

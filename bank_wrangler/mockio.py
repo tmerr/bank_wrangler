@@ -21,17 +21,6 @@ class PatchedStringIO(StringIO):
         self.seek(0)
 
 
-class PatchedBytesIO(BytesIO):
-    def __init__(self):
-        self.exists = False
-        BytesIO.__init__(self)
-
-    def __exit__(self, *args):
-        if self.writer:
-            self.truncate()
-        self.seek(0)
-
-
 def open_as_writer(obj, overwrite):
     if obj.exists and not overwrite:
         raise FileExistsError
@@ -52,8 +41,6 @@ class MockIO(InitializationMixin):
     def __init__(self):
         self.rules = PatchedStringIO()
         self.final_rules = PatchedStringIO()
-        self.vault_keys = PatchedStringIO()
-        self.vault = PatchedBytesIO()
         self.bank = defaultdict(PatchedStringIO)
 
     def rules_reader(self):
@@ -67,18 +54,6 @@ class MockIO(InitializationMixin):
 
     def final_rules_writer(self, overwrite):
         return open_as_writer(self.final_rules, overwrite)
-
-    def vault_keys_reader(self):
-        return open_as_reader(self.vault_keys)
-
-    def vault_keys_writer(self, overwrite):
-        return open_as_writer(self.vault_keys, overwrite)
-
-    def vault_reader(self):
-        return open_as_reader(self.vault)
-
-    def vault_writer(self, overwrite):
-        return open_as_writer(self.vault, overwrite)
 
     def data_reader(self, key):
         return open_as_reader(self.bank[key])
