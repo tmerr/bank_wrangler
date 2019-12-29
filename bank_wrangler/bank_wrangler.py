@@ -83,7 +83,6 @@ def _populate_fields(empty):
 def add(name):
     """Add a config"""
     _assert_initialized()
-    iolayer = FileIO(os.getcwd())
     vault = Vault(os.getcwd())
     if name in vault.keys():
         print('fatal: config name already in use: {name}')
@@ -108,7 +107,6 @@ def _expect_valid_name(name, vault):
 def remove(name):
     """Remove a config"""
     _assert_initialized()
-    iolayer = FileIO(os.getcwd())
     vault = Vault(os.getcwd())
     _expect_valid_name(name, vault)
     passphrase = _promptpass()
