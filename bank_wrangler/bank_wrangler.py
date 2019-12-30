@@ -188,15 +188,15 @@ def report_cmd():
     _assert_initialized()
     root = os.getcwd()
     vault = Vault(root)
-    iolayer = FileIO(root)
     passphrase = _promptpass()
     accounts = []
     for key, cfg in vault.get_all(passphrase).items():
         accounts.extend(BankInstance(root, key, cfg).accounts())
+    iolayer = FileIO(root)
     transactions, errs1, errs2 = _list_all_transactions(os.getcwd(), iolayer, passphrase)
     print_indented('errors while applying rules', errs1)
     print_indented('errors while applying final rules', errs2)
-    iolayer.write_report(report.generate(transactions, accounts))
+    report.generate(root, transactions, accounts)
 
 
 if __name__ == '__main__':

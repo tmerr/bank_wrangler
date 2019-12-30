@@ -1,5 +1,4 @@
 import os
-import shutil
 from atomicwrites import atomic_write
 
 
@@ -10,21 +9,10 @@ class FileIO:
         self.final_rules_path = os.path.join(rootpath, 'final-rules')
 
     def rules_reader(self):
-        return open(self.rules_path), 'r')
+        return open(self.rules_path)
 
     def final_rules_reader(self):
-        return open(self.final_rules_path, 'r')
-
-    def write_report(self, file_dictionary):
-        try:
-            shutil.rmtree(os.path.join(self.rootpath, 'report'))
-        except FileNotFoundError:
-            pass
-        os.mkdir(os.path.join(self.rootpath, 'report'))
-        for filename, datastring in file_dictionary.items():
-            path = os.path.join(self.rootpath, 'report', filename)
-            with open(path, 'w') as f:
-                f.write(datastring)
+        return open(self.final_rules_path)
 
     def initialize(self):
         try:

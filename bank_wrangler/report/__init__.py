@@ -4,6 +4,7 @@ from itertools import chain
 from typing import Iterable
 import json
 import jinja2
+import shutil
 
 
 def _jsonify_entry(entry):
@@ -56,12 +57,8 @@ def _generate_pages(html_path, css_names, js_names):
             for filename in pages.values()}
 
 
-def generate(transactionmodel, accounts: Iterable[str]):
-    """
-    Generate a dictionary representing the files to be written for the
-    report, where keys are string filenames and values are string
-    file contents.
-    """
+def generate(root, transactionmodel, accounts: Iterable[str]):
+    """Write the report to <root>/report directory."""
     reportdir = os.path.dirname(os.path.abspath(__file__))
     html_path = os.path.join(reportdir, 'html')
     css_paths = glob(os.path.join(reportdir, 'libs', '*.css'))
@@ -85,4 +82,13 @@ def generate(transactionmodel, accounts: Iterable[str]):
                                           js_names).items():
         files[filename] = text
 
-    return files
+    outdir = os.path.join(root, 'report')
+    try:
+        shutil.rmtree(outdir)
+    except FileNotFoundError:
+        pass
+    os.mkdir(outdir)
+    for filename, datastring in files.items():
+        path = os.path.join(outdir, filename)
+        with open(path, 'w') as f:
+            f.write(datastring)
