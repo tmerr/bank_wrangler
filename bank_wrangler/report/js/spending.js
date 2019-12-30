@@ -1,7 +1,7 @@
 window.spendingByCategory = function spendingByCategory(model, minMs, maxMs) {
     const categoryColumn = model.columns.indexOf('category');
     const amountColumn = model.columns.indexOf('amount');
-    const fromColumn = model.columns.indexOf('from');
+    const fromColumn = model.columns.indexOf('source');
     const toColumn = model.columns.indexOf('to');
     const dateColumn = model.columns.indexOf('date');
     const result = new Map();

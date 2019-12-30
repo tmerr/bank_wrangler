@@ -79,7 +79,7 @@ def fetch(config, fileobj):
 
 
 def transactions(fileobj):
-    result = schema.TransactionModel(schema.COLUMNS)
+    result = []
     account = fileobj.readline().rstrip('\n')
     data = json.load(fileobj, parse_float=Decimal)['data']
 
@@ -101,20 +101,16 @@ def transactions(fileobj):
             from_to = [b, a]
         funding = transaction.get('funding_source')
         if funding is not None and funding['name'] != 'Venmo balance':
-            result.ingest_row(
-                schema.String(name()),
-                schema.String(funding['name']),
-                schema.String(from_to[0]),
+            result.append(schema.Transaction(
+                name(), funding['name'], from_to[0],
                 schema.Date(year, month, day),
-                schema.String('fund {}'.format(transaction['note'])),
-                schema.Dollars(transaction['amount']))
-        result.ingest_row(
-            schema.String(name()),
-            schema.String(from_to[0]),
-            schema.String(from_to[1]),
+                'fund {}'.format(transaction['note']),
+                Decimal(transaction['amount'])))
+        result.append(schema.Transaction(
+            name(), from_to[0], from_to[1],
             schema.Date(year, month, day),
-            schema.String(transaction['note']),
-            schema.Dollars(transaction['amount']))
+            transaction['note'],
+            Decimal(transaction['amount'])))
     assert compute_balance(account, result) == data['end_balance']
     return result
 

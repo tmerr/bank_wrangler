@@ -1,7 +1,6 @@
 from itertools import zip_longest, chain
 from collections import defaultdict
 from bank_wrangler import schema
-from bank_wrangler.schema import COLUMNS
 
 
 def _partition(iterable, key):
@@ -12,9 +11,8 @@ def _partition(iterable, key):
     return dict(bykey)
 
 
-def _loose_identity(transaction):
-    return tuple(transaction[COLUMNS.index(col)]
-                 for col in ('from', 'to', 'date', 'amount'))
+def _loose_identity(trans):
+    return tuple(trans.source, trans.to, trans.date, trans.amount)
 
 
 def _fuse(transA, transB):
@@ -24,40 +22,27 @@ def _fuse(transA, transB):
     if descriptionA == descriptionB:
         new_description = descriptionA
     else:
-        new_description = schema.String('{} + {}'.format(
+        new_description = '{} + {}'.format(
             descriptionA.value,
-            descriptionB.value
-        ))
-    return (
-        schema.String('{} + {}'.format(bankA.value, bankB.value)),
-        frmA,
-        toA,
-        dateA,
-        new_description,
-        amountA
-    )
+            descriptionB.value)
+    return transA._replace(
+            bank='{} + {}'.format(bankA.value, bankB.value),
+            description=new_description)
 
 
 def _unmatch(trans, source_accounts):
-    bank, frm, to, date, description, amount = trans
     def rewrite(account):
-        if account.value in source_accounts:
+        if account in source_accounts:
             return account
         else:
-            return schema.String('unmatched: {}'.format(account))
-    return (
-        bank,
-        *map(rewrite, [frm, to]),
-        date,
-        description,
-        amount
-    )
+            return 'unmatched: {}'.format(account)
+    return trans._replace(source=rewrite(trans.source), to=rewrite(trans.to))
 
 
 def _split_internal_external(transactions, accounts_set):
     def isinternal(transaction):
-        frm = transaction[COLUMNS.index('from')].value
-        to = transaction[COLUMNS.index('to')].value
+        frm = transaction.source
+        to = transaction.to
         return frm in accounts_set and to in accounts_set
     internal = [t for t in transactions if isinternal(t)]
     external = [t for t in transactions if not isinternal(t)]
@@ -112,10 +97,10 @@ def deduplicate(transactions, bank_to_accounts_map):
         transactions,
         set(chain(*bank_to_accounts_map.values()))
     )
-    result = schema.TransactionModel(schema.COLUMNS)
+    result = []
     for similar in _partition(internal_transactions, key=_loose_identity).values():
         splitbybank = list(_partition(similar,
-                                      key=lambda t: t[COLUMNS.index('bank')]).items())
+                                      key=lambda t: t.bank).items())
         assert len(splitbybank) in [1, 2]
         if len(splitbybank) == 1:
             splitbybank.append((None, []))
@@ -127,9 +112,6 @@ def deduplicate(transactions, bank_to_accounts_map):
                 toadd = _unmatch(tA, bank_to_accounts_map[banknameA.value])
             else:
                 toadd = _fuse(tA, tB)
-            result.ingest_row(*toadd)
-
-    for t in external_transactions:
-        result.ingest_row(*t)
-
+            result.append(toadd)
+    result.extend(external_transactions)
     return result

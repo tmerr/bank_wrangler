@@ -62,9 +62,9 @@ def _parse_ofx(fileobj):
 
 def transactions(fileobj):
     ofx = _parse_ofx(fileobj)
-    result = schema.TransactionModel(schema.COLUMNS)
+    result = []
     for st in ofx.statements:
-        acctname = st.invacctfrom.acctid
+        acctname = str(st.invacctfrom.acctid)
         for t in st.transactions:
             if hasattr(t, 'total'):
                 # ignore investment buy/sell
@@ -74,15 +74,12 @@ def transactions(fileobj):
             if amount < 0:
                 frm, to = to, frm
                 amount *= -1
-            result.ingest_row(
-                schema.String(name()),
-                schema.String(frm),
-                schema.String(to),
+            result.append(schema.Transaction(
+                name(), frm, to,
                 schema.Date(t.dtposted.year, t.dtposted.month, t.dtposted.day),
-                schema.String(t.memo),
-                schema.Dollars(amount),
-            )
-            acctid = st.invacctfrom.acctid
+                str(t.memo),
+                Decimal(amount),
+            ))
         add_balance_correcting_transaction(name(), acctname, _networth(st), result)
     return result
 

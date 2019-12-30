@@ -136,7 +136,7 @@ def fetch(config, fileobj):
 def transactions(fileobj):
     account_name = fileobj.readline().rstrip('\n')
     balance = Decimal(fileobj.readline().rstrip('\n'))
-    result = schema.TransactionModel(schema.COLUMNS)
+    result = []
     lines = list(csv.reader(fileobj))[1:]
     for date, transaction_type, description, _, signed_amount_str in lines:
         signed_amount = Decimal(signed_amount_str.replace(',', ''))
@@ -148,13 +148,11 @@ def transactions(fileobj):
             assert transaction_type == 'DEBIT'
             frm, to = to, frm
         month, day, year = map(int, date.split('/'))
-        result.ingest_row(
-            schema.String(name()),
-            schema.String(frm),
-            schema.String(to),
+        result.append(schema.Transaction(
+            name(), frm, to,
             schema.Date(year, month, day),
-            schema.String(description),
-            schema.Dollars(signed_amount.copy_abs()))
+            description,
+            signed_amount.copy_abs()))
     add_balance_correcting_transaction(name(), account_name, balance, result)
     return result
 

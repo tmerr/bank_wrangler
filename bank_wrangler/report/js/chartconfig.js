@@ -13,7 +13,7 @@ const dates = function dates(model) {
 
 const deltaAmounts = function deltaAmounts(model, account) {
     const toColumn = model.columns.indexOf('to');
-    const fromColumn = model.columns.indexOf('from');
+    const fromColumn = model.columns.indexOf('source');
     const dateColumn = model.columns.indexOf('date');
     const amountColumn = model.columns.indexOf('amount');
     const map = new Map();

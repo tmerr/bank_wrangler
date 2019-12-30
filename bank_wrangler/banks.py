@@ -1,11 +1,11 @@
 from atomicwrites import atomic_write
-from bank_wrangler.bank import citizens, fidelity, fidelity_visa, venmo
+from bank_wrangler.bank import fidelity, fidelity_visa, venmo
 from bank_wrangler.config import Config
 from getpass import getpass
 import os
 
 
-_all_banks = [citizens, fidelity, fidelity_visa, venmo]
+_all_banks = [fidelity, fidelity_visa, venmo]
 
 
 def generate_config():

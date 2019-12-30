@@ -69,9 +69,6 @@ class Vault:
             in self._read(passphrase).items()
         }
 
-    def get(self, key, passphrase):
-        return self.get_all(passphrase)[key]
-
     def put(self, key, config, passphrase):
         data = self._read(passphrase)
         data[key] = config

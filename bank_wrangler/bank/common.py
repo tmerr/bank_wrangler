@@ -57,42 +57,36 @@ def fidelity_login(driver, username_string, password_string):
 
 
 def _oldest_transaction_date(transactions):
-    date_column = transactions.columns.index('date')
     if len(transactions) == 0:
         now = datetime.datetime.now()
         return schema.Date(now.year, now.month, now.day)
-    return min(t[date_column] for t in transactions)
+    return min(t.date for t in transactions)
 
 
 def compute_balance(account, transactions):
     result = Decimal('0')
-    from_column = transactions.columns.index('from')
-    to_column = transactions.columns.index('to')
-    amount_column = transactions.columns.index('amount')
     for transaction in transactions:
-        amount = transaction[amount_column].value
-        if transaction[to_column].value == account:
+        amount = transaction.amount
+        if transaction.to == account:
             result += amount
-        if transaction[from_column].value == account:
+        if transaction.source == account:
             result -= amount
     return result
 
 
 def add_balance_correcting_transaction(bankname, account, real_balance, transactions):
-    correction = real_balance - compute_balance(account, transactions)
-    frm, to = schema.String('Universe'), schema.String(account)
+    correction = Decimal(real_balance) - compute_balance(account, transactions)
+    frm, to = 'Universe', account
     if correction != 0:
         if correction < 0:
             frm, to = to, frm
             correction *= -1
-        transactions.ingest_row(
-            schema.String(bankname),
-            frm,
-            to,
+        transactions.append(schema.Transaction(
+            bankname, frm, to,
             _oldest_transaction_date(transactions),
-            schema.String('Balance correction'),
-            schema.Dollars(correction)
-        )
+            'Balance correction',
+            correction,
+        ))
     assert real_balance == compute_balance(account, transactions)
 
 

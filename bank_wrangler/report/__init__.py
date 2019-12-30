@@ -5,26 +5,14 @@ from typing import Iterable
 import json
 import jinja2
 import shutil
+from bank_wrangler import schema
 
 
-def _jsonify_entry(entry):
-    kind = entry.entrytype()
-    if kind == 'Date':
-        return '{:04}/{:02}/{:02}'.format(*entry.value)
-    elif kind == 'String':
-        return entry.value
-    elif kind == 'Dollars':
-        return str(entry.value)
-    else:
-        raise ValueError
-
-
-def _generate_data_json(transactionmodel, accounts):
-    column_names = list(transactionmodel.columns.keys())
-    transactions = [list(map(_jsonify_entry, entries))
-                    for entries in transactionmodel.transactions]
+def _generate_data_json(transactions, accounts):
+    transactions = [list(map(str, row))
+                    for row in transactions]
     return json.dumps({
-        'columns': column_names,
+        'columns': schema.Transaction._fields,
         'transactions': transactions,
         'accounts': accounts
     })
@@ -57,7 +45,7 @@ def _generate_pages(html_path, css_names, js_names):
             for filename in pages.values()}
 
 
-def generate(root, transactionmodel, accounts: Iterable[str]):
+def generate(root, transactions, accounts: Iterable[str]):
     """Write the report to <root>/report directory."""
     reportdir = os.path.dirname(os.path.abspath(__file__))
     html_path = os.path.join(reportdir, 'html')
@@ -72,7 +60,7 @@ def generate(root, transactionmodel, accounts: Iterable[str]):
             files[fname] = f.read()
 
     files['data.js'] = 'const transactionModel = {};'.format(
-        _generate_data_json(transactionmodel, list(accounts))
+        _generate_data_json(transactions, list(accounts))
     )
 
     css_names = list(map(os.path.basename, css_paths))

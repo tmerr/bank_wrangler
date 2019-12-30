@@ -5,15 +5,17 @@ import os
 from itertools import chain
 from getpass import getpass
 import click
+from tabulate import tabulate
+from bank_wrangler.rules import Rules
 from bank_wrangler.config import Vault
 from bank_wrangler.config import Config
-from bank_wrangler.fileio import FileIO
 from bank_wrangler.banks import BankInstance, generate_config
 from bank_wrangler import deduplicate, rules, schema, report
 
 
 def _assert_initialized():
-    if not FileIO(os.getcwd()).is_initialized() or not Vault(os.getcwd()).exists():
+    root = os.getcwd()
+    if not Rules(root).exists() or not Vault(root).exists():
         print("fatal: directory must be initialized with `bank_wrangler init`",
               file=sys.stderr)
         sys.exit(1)
@@ -34,8 +36,7 @@ def cli():
 def init(directory):
     """Initialize a new bank_wrangler directory"""
     passphrase = getpass('set a master passphrase: ')
-    iolayer = FileIO(directory)
-    iolayer.initialize()
+    Rules(directory).write_boilerplate()
     Vault(directory).write_empty(passphrase)
 
 
@@ -81,122 +82,77 @@ def remove(name):
         sys.exit(1)
 
 
+def _fetch(only_key=None):
+    _assert_initialized()
+    passphrase = _promptpass()
+    vault = Vault(os.getcwd())
+    items = vault.get_all(passphrase).items()
+    if only_key is not None:
+        items = [(k, c) for k, c in items if k == only_key]
+        if len(items) == 0:
+            print('unknown name ' + key, file=sys.stderr)
+            sys.exit(1)
+    for name, cfg in items:
+        print(f'fetching {name}... ')
+        BankInstance(os.getcwd(), name, cfg).fetch()
+
+
 @cli.command()
 @click.argument('name')
 def fetch(name):
     """Fetch transactions"""
-    _assert_initialized()
-    iolayer = FileIO(os.getcwd())
-    vault = Vault(os.getcwd())
-    passphrase = _promptpass()
-    try:
-        cfg = vault.get(name, passphrase)
-    except KeyError:
-        print('unknown name ' + name, file=sys.stderr)
-        sys.exit(1)
-    BankInstance(os.getcwd(), name, cfg).fetch()
+    _fetch(only_key=name)
 
 
 @cli.command(name='fetch-all')
 def fetch_all():
     """Fetch all transactions"""
+    _fetch()
+
+
+def _list_transactions(only_key=None):
+    root = os.getcwd()
+    vault = Vault(root)
     _assert_initialized()
     passphrase = _promptpass()
-    iolayer = FileIO(os.getcwd())
-    vault = Vault(os.getcwd())
-    for name in vault.keys():
-        print(f'fetching {name}... ')
-        cfg = vault.get(name, passphrase)
-        BankInstance(os.getcwd(), name, cfg).fetch()
-
-
-@cli.command(name='check-rules')
-def check_rules():
-    """Check rules file for errors"""
-    pass
-
-
-def print_indented(label, errs):
-    if len(errs) > 0:
-        print('\n{}:'.format(label))
-        print('\n'.join('    ' + err for err in errs))
+    items = vault.get_all(passphrase).items()
+    if only_key is not None:
+        items = [(k, c) for k, c in items if k == only_key]
+        if len(items) == 0:
+            print('unknown name ' + key, file=sys.stderr)
+            sys.exit(1)
+    transactions = []
+    accounts_by_bank = {}
+    for key, conf in items:
+        transactions.extend(BankInstance(root, key, conf).transactions())
+        accounts_by_bank[conf.bank] = BankInstance(root, key, conf).accounts()
+    r = Rules(root).get_module()
+    transactions = r.pre_stitch(transactions)
+    transactions = deduplicate.deduplicate(transactions, accounts_by_bank)
+    transactions = r.post_stitch(transactions)
+    return transactions, accounts_by_bank
 
 
 @cli.command(name='list')
 @click.argument('name')
 def list_transactions(name):
     """List transactions"""
-    _assert_initialized()
-    iolayer = FileIO(os.getcwd())
-    with iolayer.rules_reader() as f:
-        parsed, errs = rules.parse(schema.COLUMNS, f.read())
-    if len(errs) != 0:
-        print_intended('cannot parse rules file', errs)
-    passphrase = _promptpass()
-    try:
-        cfg = Vault(os.getcwd()).get(name, passphrase)
-    except KeyError:
-        print('unknown name ' + name, file=sys.stderr)
-        sys.exit(1)
-    transactions = BankInstance(os.getcwd(), name, cfg).transactions()
-    new_transactions, errs = rules.apply(parsed, transactions)
-    print(str(new_transactions))
-    print_indented('errors while applying rules', errs)
+    transactions = _list_transactions(only_key=name)[0]
+    print(tabulate(transactions, headers=schema.Transaction._fields))
 
-
-def _list_all_transactions(root, iolayer, passphrase):
-    with iolayer.rules_reader() as f:
-        parsed1, e1 = rules.parse(schema.COLUMNS_WITH_CATEGORY, f.read())
-    if len(e1) != 0:
-        print_indented('cannot parse rules file', errs1)
-        sys.exit(1)
-    with iolayer.final_rules_reader() as f:
-        parsed2, e2 = rules.parse(schema.COLUMNS_WITH_CATEGORY, f.read())
-    if len(e2) != 0:
-        print_indented('cannot parse final rules file', errs1)
-        sys.exit(1)
-    accounts_by_bank = {}
-    transactions0 = schema.TransactionModel(schema.COLUMNS)
-    vault = Vault(root)
-    for key, conf in vault.get_all(passphrase).items():
-        for row in BankInstance(root, key, conf).transactions():
-            transactions0.ingest_row(*row)
-        accounts_by_bank[conf.bank] = BankInstance(root, key, conf).accounts()
-    transactions1, errs1 = rules.apply(parsed1, transactions0)
-    transactions2 = deduplicate.deduplicate(transactions1, accounts_by_bank)
-    transactions3 = schema.TransactionModel(schema.COLUMNS_WITH_CATEGORY)
-    for row in transactions2:
-        transactions3.ingest_row(*row, schema.String(''))
-    transactions4, errs2 = rules.apply(parsed2, transactions3)
-
-    return transactions4, errs1, errs2
 
 @cli.command(name='list-all')
 def list_all_transactions():
     """List all transactions"""
-    _assert_initialized()
-    iolayer = FileIO(os.getcwd())
-    passphrase = _promptpass()
-    transactions, errs1, errs2 = _list_all_transactions(os.getcwd(), iolayer, passphrase)
-    print(str(transactions))
-    print_indented('errors while applying rules', errs1)
-    print_indented('errors while applying final rules', errs2)
+    transactions = _list_transactions()[0]
+    print(tabulate(transactions, headers=schema.Transaction._fields))
 
 
 @cli.command(name='report')
 def report_cmd():
-    _assert_initialized()
-    root = os.getcwd()
-    vault = Vault(root)
-    passphrase = _promptpass()
-    accounts = []
-    for key, cfg in vault.get_all(passphrase).items():
-        accounts.extend(BankInstance(root, key, cfg).accounts())
-    iolayer = FileIO(root)
-    transactions, errs1, errs2 = _list_all_transactions(os.getcwd(), iolayer, passphrase)
-    print_indented('errors while applying rules', errs1)
-    print_indented('errors while applying final rules', errs2)
-    report.generate(root, transactions, accounts)
+    transactions, accounts_by_bank = _list_transactions()
+    accounts = chain(*accounts_by_bank.values())
+    report.generate(os.getcwd(), transactions, accounts)
 
 
 if __name__ == '__main__':
