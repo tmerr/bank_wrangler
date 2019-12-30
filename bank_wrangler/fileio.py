@@ -3,42 +3,17 @@ import shutil
 from atomicwrites import atomic_write
 
 
-class InitializationMixin(object):
-    """Sets up files relying only on read/write functions"""
-
-    def initialize(self):
-        for writer in (self.rules_writer, self.final_rules_writer):
-            with writer(overwrite=False) as f:
-                f.truncate()
-
-    def is_initialized(self):
-        for reader in (self.rules_reader, self.final_rules_reader):
-            try:
-                with reader() as f:
-                    pass
-            except FileNotFoundError:
-                return False
-        return True
-
-
-class FileIO(InitializationMixin):
+class FileIO:
     def __init__(self, rootpath):
         self.rootpath = rootpath
-
-    def _fullpath(self, filename):
-        return os.path.join(self.rootpath, filename)
+        self.rules_path = os.path.join(rootpath, 'rules')
+        self.final_rules_path = os.path.join(rootpath, 'final-rules')
 
     def rules_reader(self):
-        return open(self._fullpath('rules'), 'r')
-
-    def rules_writer(self, overwrite):
-        return atomic_write(self._fullpath('rules'), mode='w', overwrite=overwrite)
+        return open(self.rules_path), 'r')
 
     def final_rules_reader(self):
-        return open(self._fullpath('final-rules'), 'r')
-
-    def final_rules_writer(self, overwrite):
-        return atomic_write(self._fullpath('final-rules'), mode='w', overwrite=overwrite)
+        return open(self.final_rules_path, 'r')
 
     def write_report(self, file_dictionary):
         try:
@@ -57,4 +32,11 @@ class FileIO(InitializationMixin):
         except FileExistsError:
             print(f'fatal: "{self.rootpath}" already exists', file=sys.stderr)
             sys.exit(1)
-        super().initialize()
+
+        with atomic_write(self.rules_path, mode='w', overwrite=False) as f:
+            f.truncate()
+        with atomic_write(self.final_rules_path, mode='w', overwrite=False) as f:
+            f.truncate()
+
+    def is_initialized(self):
+        return os.path.exists(self.rules_path) and os.path.exists(self.final_rules_path)
