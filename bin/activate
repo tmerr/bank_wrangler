@@ -1,0 +1,15 @@
+#!/bin/bash
+# usage: source bin/activate
+#
+# Activates a virtual env containing the required python packages.
+# Also prepares paths so the bank-wrangler command  can be executed from
+# any directory. `$ deactivate` to leave the virtual env.
+
+BINDIR="$(dirname ${BASH_SOURCE[${#BASH_SOURCE[@]} - 1]})"
+PATH=$PATH:$BINDIR
+export PYTHONPATH=$PYTHONPATH:$BINDIR/..
+if [ ! -d "$BINDIR/venv" ]; then
+    python3 -m venv "$BINDIR/../venv" && echo "Created venv"
+fi
+source "$BINDIR/../venv/bin/activate"
+pip install --quiet -r "$BINDIR/../requirements.txt"

@@ -1,0 +1,12 @@
+atomicwrites==1.3.0
+Click==7.0
+Jinja2==2.10.3
+MarkupSafe==1.1.1
+nose==1.3.7
+ofxtools==0.8.20
+pycryptodome==3.9.4
+pyparsing==2.4.6
+rncryptor==3.3.0
+selenium==3.141.0
+tabulate==0.8.6
+urllib3==1.25.7

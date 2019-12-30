@@ -41,18 +41,6 @@ class FileIO(InitializationMixin):
     def final_rules_writer(self, overwrite):
         return atomic_write(self._fullpath('final-rules'), mode='w', overwrite=overwrite)
 
-    def _datapath(self, key):
-        return self._fullpath(key) + '.data'
-
-    def data_reader(self, key):
-        return open(self._datapath(key), 'r')
-
-    def data_writer(self, key):
-        return atomic_write(self._datapath(key), mode='w', overwrite=True)
-
-    def data_exists(self, key):
-        return os.path.exists(self._datapath(key))
-
     def write_report(self, file_dictionary):
         try:
             shutil.rmtree(os.path.join(self.rootpath, 'report'))

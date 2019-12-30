@@ -61,11 +61,16 @@ class Vault:
             else:
                 f.write(text)
 
+    def get_all(self, passphrase):
+        # restores namedtuples that were lost during serialization
+        return {
+            key: Config(bank, [ConfigField(*line) for line in fields])
+            for key, (bank, fields)
+            in self._read(passphrase).items()
+        }
+
     def get(self, key, passphrase):
-        data = self._read(passphrase)
-        bank, fields = data[key]
-        # restore namedtuples that were lost during serialization
-        return Config(bank, [ConfigField(*line) for line in fields])
+        return self.get_all(passphrase)[key]
 
     def put(self, key, config, passphrase):
         data = self._read(passphrase)

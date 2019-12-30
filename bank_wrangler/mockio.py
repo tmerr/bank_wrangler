@@ -41,7 +41,6 @@ class MockIO(InitializationMixin):
     def __init__(self):
         self.rules = PatchedStringIO()
         self.final_rules = PatchedStringIO()
-        self.bank = defaultdict(PatchedStringIO)
 
     def rules_reader(self):
         return open_as_reader(self.rules)
@@ -54,15 +53,6 @@ class MockIO(InitializationMixin):
 
     def final_rules_writer(self, overwrite):
         return open_as_writer(self.final_rules, overwrite)
-
-    def data_reader(self, key):
-        return open_as_reader(self.bank[key])
-
-    def data_writer(self, key):
-        return open_as_writer(self.bank[key])
-
-    def data_exists(self, key):
-        return key in self.bank
 
     def write_report(self, file_dictionary):
         raise NotImplementedError

@@ -9,7 +9,8 @@ from bank_wrangler.config import Vault
 from bank_wrangler.config import Config
 from bank_wrangler.fileio import FileIO
 from bank_wrangler import fileio
-from bank_wrangler import aggregate, deduplicate, rules, schema, report
+from bank_wrangler.banks import BankInstance
+from bank_wrangler import deduplicate, rules, schema, report
 
 
 def _assert_initialized():
@@ -53,31 +54,6 @@ def listcmd():
     print('\n'.join(vault.keys()))
 
 
-def _select_bank():
-    print('bank:')
-    banks = aggregate.banks()
-    for i, bank in enumerate(banks):
-        print(f'  {i}. {bank.name()}')
-    selected = None
-    while selected is None:
-        choice = input('choice: ')
-        try:
-            selected = banks[int(choice)]
-        except (ValueError, IndexError):
-            print('try again')
-    return selected
-
-
-def _populate_fields(empty):
-    populated = []
-    for field in empty:
-        hidden, label, _ = field
-        inp = getpass if hidden else input
-        value = inp('  {}: '.format(label))
-        populated.append(field._replace(value=value))
-    return populated
-
-
 @config.command()
 @click.argument('name')
 def add(name):
@@ -88,9 +64,7 @@ def add(name):
         print('fatal: config name already in use: {name}')
         sys.exit(1)
     passphrase = _promptpass()
-    bank = _select_bank()
-    fields = _populate_fields(bank.empty_config())
-    cfg = Config(bank.name(), fields)
+    cfg = bank.generate_config()
     vault.put(name, cfg, passphrase)
 
 
@@ -123,10 +97,7 @@ def fetch(name):
     _expect_valid_name(name, vault)
     passphrase = _promptpass()
     cfg = vault.get(name, passphrase)
-    try:
-        aggregate.fetch(name, cfg, iolayer)
-    except aggregate.BankException:
-        raise
+    BankInstance(os.getcwd(), name, cfg).fetch()
 
 
 @cli.command(name='fetch-all')
@@ -139,12 +110,7 @@ def fetch_all():
     for name in vault.keys():
         print(f'fetching {name}... ', end='')
         cfg = vault.get(name, passphrase)
-        try:
-            aggregate.fetch(name, cfg, iolayer)
-            print('OK')
-        except aggregate.BankException:
-            print('FAILED')
-            raise
+        BankInstance(os.getcwd(), name, cfg).fetch()
 
 
 @cli.command(name='check-rules')
@@ -171,24 +137,13 @@ def list_transactions(name):
         print_intended('cannot parse rules file', errs)
     passphrase = _promptpass()
     cfg = Vault(os.getcwd()).get(name, passphrase)
-    try:
-        transactions = aggregate.list_transactions(name, cfg, iolayer)
-    except aggregate.BankException:
-        raise
-
+    transactions = BankInstance(os.getcwd(), name, cfg).transactions()
     new_transactions, errs = rules.apply(parsed, transactions)
     print(str(new_transactions))
     print_indented('errors while applying rules', errs)
 
-def _configs_by_key(passphrase):
-    vault = Vault(os.getcwd())
-    return {key: vault.get(key, passphrase)
-            for key in vault.keys()}
 
-
-def _list_all_transactions(iolayer, passphrase):
-    transactions0 = schema.TransactionModel(schema.COLUMNS)
-    configs_by_key = _configs_by_key(passphrase)
+def _list_all_transactions(root, iolayer, passphrase):
     with iolayer.rules_reader() as f:
         parsed1, e1 = rules.parse(schema.COLUMNS_WITH_CATEGORY, f.read())
     if len(e1) != 0:
@@ -199,19 +154,19 @@ def _list_all_transactions(iolayer, passphrase):
     if len(e2) != 0:
         print_indented('cannot parse final rules file', errs1)
         sys.exit(1)
-    try:
-        for key, conf in configs_by_key.items():
-            for row in aggregate.list_transactions(key, conf, iolayer):
-                transactions0.ingest_row(*row)
-        accounts_by_bank = aggregate.accounts_by_bank(configs_by_key, iolayer)
-        transactions1, errs1 = rules.apply(parsed1, transactions0)
-        transactions2 = deduplicate.deduplicate(transactions1, accounts_by_bank)
-        transactions3 = schema.TransactionModel(schema.COLUMNS_WITH_CATEGORY)
-        for row in transactions2:
-            transactions3.ingest_row(*row, schema.String(''))
-        transactions4, errs2 = rules.apply(parsed2, transactions3)
-    except aggregate.BankException:
-        raise
+    accounts_by_bank = {}
+    transactions0 = schema.TransactionModel(schema.COLUMNS)
+    vault = Vault(root)
+    for key, conf in vault.get_all():
+        for row in BankInstance(root, key, conf).transactions():
+            transactions0.ingest_row(*row)
+        accounts_by_bank[conf.bank] = BankInstance(root, key, conf).accounts()
+    transactions1, errs1 = rules.apply(parsed1, transactions0)
+    transactions2 = deduplicate.deduplicate(transactions1, accounts_by_bank)
+    transactions3 = schema.TransactionModel(schema.COLUMNS_WITH_CATEGORY)
+    for row in transactions2:
+        transactions3.ingest_row(*row, schema.String(''))
+    transactions4, errs2 = rules.apply(parsed2, transactions3)
 
     return transactions4, errs1, errs2
 
@@ -221,7 +176,7 @@ def list_all_transactions():
     _assert_initialized()
     iolayer = FileIO(os.getcwd())
     passphrase = _promptpass()
-    transactions, errs1, errs2 = _list_all_transactions(iolayer, passphrase)
+    transactions, errs1, errs2 = _list_all_transactions(os.getcwd(), iolayer, passphrase)
     print(str(transactions))
     print_indented('errors while applying rules', errs1)
     print_indented('errors while applying final rules', errs2)
@@ -230,12 +185,13 @@ def list_all_transactions():
 @cli.command(name='report')
 def report_cmd():
     _assert_initialized()
-    iolayer = FileIO(os.getcwd())
+    root = os.getcwd()
+    iolayer = FileIO(root)
     passphrase = _promptpass()
-    configs_by_key = _configs_by_key(passphrase, iolayer)
-    accounts_by_bank = aggregate.accounts_by_bank(configs_by_key, iolayer)
-    accounts = chain(*accounts_by_bank.values())
-    transactions, errs1, errs2 = _list_all_transactions(iolayer, passphrase)
+    accounts = []
+    for key, cfg in vault.get_all():
+        accounts.extend(BankInstance(root, key, cfg).accounts())
+    transactions, errs1, errs2 = _list_all_transactions(os.getcwd(), iolayer, passphrase)
     print_indented('errors while applying rules', errs1)
     print_indented('errors while applying final rules', errs2)
     iolayer.write_report(report.generate(transactions, accounts))
