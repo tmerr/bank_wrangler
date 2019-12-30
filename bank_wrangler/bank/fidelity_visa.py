@@ -105,8 +105,12 @@ def _download(config, tempdir):
     software_format.select_by_visible_text('Microsoft Excel')
     start_date = driver.find_element_by_id('startDate')
     start_date.clear()
-    start_date.send_keys(_start_date_string(
-        driver.find_element_by_id('endDate').get_attribute('value')))
+    end_date = driver.find_element_by_id('endDate')
+    if end_date.get_attribute('value') == '':
+        # fall back to local time. may cause errors if local time is ahead.
+        now = datetime.now()
+        end_date.send_keys('{}/{}/{}'.format(now.month, now.day, now.year))
+    start_date.send_keys(_start_date_string(end_date.get_attribute('value')))
     download_elem = driver.find_element_by_name('Download')
     download_elem.click()
 
