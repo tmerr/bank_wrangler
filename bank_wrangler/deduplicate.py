@@ -12,21 +12,18 @@ def _partition(iterable, key):
 
 
 def _loose_identity(trans):
-    return tuple(trans.source, trans.to, trans.date, trans.amount)
+    return (trans.source, trans.to, trans.date, trans.amount)
 
 
 def _fuse(transA, transB):
-    bankA, frmA, toA, dateA, descriptionA, amountA = transA
-    bankB, frmB, toB, dateB, descriptionB, amountB = transB
     assert _loose_identity(transA) == _loose_identity(transB)
-    if descriptionA == descriptionB:
+    if transA.description == transB.description:
         new_description = descriptionA
     else:
         new_description = '{} + {}'.format(
-            descriptionA.value,
-            descriptionB.value)
+            transA.description, transB.description)
     return transA._replace(
-            bank='{} + {}'.format(bankA.value, bankB.value),
+            bank='{} + {}'.format(transA.bank, transB.bank),
             description=new_description)
 
 
@@ -107,9 +104,9 @@ def deduplicate(transactions, bank_to_accounts_map):
         (banknameA, tsA), (banknameB, tsB) = splitbybank
         for tA, tB in zip_longest(tsA, tsB):
             if tA is None:
-                toadd = _unmatch(tB, bank_to_accounts_map[banknameB.value])
+                toadd = _unmatch(tB, bank_to_accounts_map[banknameB])
             elif tB is None:
-                toadd = _unmatch(tA, bank_to_accounts_map[banknameA.value])
+                toadd = _unmatch(tA, bank_to_accounts_map[banknameA])
             else:
                 toadd = _fuse(tA, tB)
             result.append(toadd)

@@ -18,7 +18,7 @@ def test_put_get():
         vault = config.Vault(path)
         vault.write_empty(vaultpass)
         vault.put(key, config_in, vaultpass)
-        config_out = vault.get(key, vaultpass)
+        config_out = vault.get_all(vaultpass)[key]
     assert_equals(config_in, config_out)
 
 
@@ -50,4 +50,4 @@ def test_put_delete():
         assert_equals(vault.keys(), ['somekey'])
         vault.delete(key, vaultpass)
         assert_equals(vault.keys(), [])
-        assert_raises(KeyError, vault.get, key, vaultpass)
+        assert_equals(vault.get_all(vaultpass), {})

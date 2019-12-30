@@ -1,3 +1,4 @@
+from decimal import Decimal
 from nose.tools import assert_equals, assert_in
 from bank_wrangler import deduplicate
 from bank_wrangler import schema
@@ -9,33 +10,36 @@ def test_deduplicate_ok():
         'bankB': ['accountB'],
     }
 
-    model = schema.TransactionModel(schema.COLUMNS)
-    model.ingest_row(schema.String('bankA'),
-                     schema.String('accountA'),
-                     schema.String('accountB'),
-                     schema.Date(2017, 1, 1),
-                     schema.String('a transaction'),
-                     schema.Dollars('10.00'))
-    model.ingest_row(schema.String('bankB'),
-                     schema.String('accountA'),
-                     schema.String('accountB'),
-                     schema.Date(2017, 1, 1),
-                     schema.String('same transaction!'),
-                     schema.Dollars('10.00'))
-
-    deduped = deduplicate.deduplicate(model, bank_to_accounts_map)
+    transactions = [
+        schema.Transaction(
+            'bankA',
+            'accountA',
+            'accountB',
+             schema.Date(2017, 1, 1),
+             'a transaction',
+             Decimal('10.00')),
+        schema.Transaction(
+            'bankB',
+            'accountA',
+            'accountB',
+             schema.Date(2017, 1, 1),
+             'same transaction!',
+             Decimal('10.00')),
+    ]
+    deduped = deduplicate.deduplicate(transactions, bank_to_accounts_map)
 
     assert_equals(len(deduped), 1)
 
-    expected = [(
-        schema.String('bankA + bankB'),
-        schema.String('accountA'),
-        schema.String('accountB'),
-        schema.Date(2017, 1, 1),
-        schema.String('a transaction + same transaction!'),
-        schema.Dollars('10.00')
-    )]
-    assert_equals(deduped.view_snapshot(), expected)
+    expected = [
+        schema.Transaction(
+            'bankA + bankB',
+            'accountA',
+            'accountB',
+            schema.Date(2017, 1, 1),
+            'a transaction + same transaction!',
+            Decimal('10.00')),
+    ]
+    assert_equals(deduped, expected)
 
 
 def test_deduplicate_unmatched_missing():
@@ -43,25 +47,28 @@ def test_deduplicate_unmatched_missing():
         'bankA': ['accountA'],
         'bankB': ['accountB'],
     }
-    model = schema.TransactionModel(schema.COLUMNS)
-    model.ingest_row(schema.String('bankA'),
-                     schema.String('accountA'),
-                     schema.String('accountB'),
-                     schema.Date(2017, 1, 1),
-                     schema.String('a transaction'),
-                     schema.Dollars('10.00'))
+    transactions = [
+        schema.Transaction(
+            'bankA',
+             'accountA',
+             'accountB',
+             schema.Date(2017, 1, 1),
+             'a transaction',
+             Decimal('10.00')),
+    ]
 
-    deduped = deduplicate.deduplicate(model, bank_to_accounts_map)
+    deduped = deduplicate.deduplicate(transactions, bank_to_accounts_map)
 
-    expected = [(
-        schema.String('bankA'),
-        schema.String('accountA'),
-        schema.String('unmatched: accountB'),
-        schema.Date(2017, 1, 1),
-        schema.String('a transaction'),
-        schema.Dollars('10.00')
-    )]
-    assert_equals(deduped.view_snapshot(), expected)
+    expected = [
+        schema.Transaction(
+            'bankA',
+            'accountA',
+            'unmatched: accountB',
+            schema.Date(2017, 1, 1),
+            'a transaction',
+            Decimal('10.00')),
+    ]
+    assert_equals(deduped, expected)
 
 
 def test_deduplicate_unmatched_typo():
@@ -70,41 +77,45 @@ def test_deduplicate_unmatched_typo():
         'bankB': ['accountB'],
     }
 
-    model = schema.TransactionModel(schema.COLUMNS)
-    model.ingest_row(schema.String('bankA'),
-                     schema.String('accountA'),
-                     schema.String('accountB'),
-                     schema.Date(2017, 1, 1),
-                     schema.String('a transaction'),
-                     schema.Dollars('10.00'))
-    model.ingest_row(schema.String('bankB'),
-                     schema.String('typo-accountA'),
-                     schema.String('accountB'),
-                     schema.Date(2017, 1, 1),
-                     schema.String('same transaction!'),
-                     schema.Dollars('10.00'))
+    transactions = [
+        schema.Transaction(
+            'bankA',
+             'accountA',
+             'accountB',
+             schema.Date(2017, 1, 1),
+             'a transaction',
+             Decimal('10.00')),
+        schema.Transaction(
+            'bankB',
+             'typo-accountA',
+             'accountB',
+             schema.Date(2017, 1, 1),
+             'same transaction!',
+             Decimal('10.00')),
+    ]
 
-    deduped = deduplicate.deduplicate(model, bank_to_accounts_map)
-    snapshot = deduped.view_snapshot()
-    assert_equals(len(snapshot), 2)
+    deduped = deduplicate.deduplicate(transactions, bank_to_accounts_map)
+    assert_equals(len(deduped), 2)
 
-    assert_in((
-        schema.String('bankA'),
-        schema.String('accountA'),
-        schema.String('unmatched: accountB'),
-        schema.Date(2017, 1, 1),
-        schema.String('a transaction'),
-        schema.Dollars('10.00')
-    ), snapshot)
+    assert_in(
+        schema.Transaction(
+            'bankA',
+            'accountA',
+            'unmatched: accountB',
+            schema.Date(2017, 1, 1),
+            'a transaction',
+            Decimal('10.00')),
+        deduped)
 
-    assert_in((
-        schema.String('bankB'),
-        schema.String('typo-accountA'),
-        schema.String('accountB'),
-        schema.Date(2017, 1, 1),
-        schema.String('same transaction!'),
-        schema.Dollars('10.00')
-    ), snapshot)
+    assert_in(
+        schema.Transaction(
+            'bankB',
+            'typo-accountA',
+            'accountB',
+            schema.Date(2017, 1, 1),
+            'same transaction!',
+            Decimal('10.00')),
+        deduped)
 
 
 def test_deduplicate_both_unknown():
@@ -113,38 +124,42 @@ def test_deduplicate_both_unknown():
         'bankB': ['accountB'],
     }
 
-    model = schema.TransactionModel(schema.COLUMNS)
-    model.ingest_row(schema.String('bankA'),
-                     schema.String('accountA'),
-                     schema.String('unknownB'),
-                     schema.Date(2017, 1, 1),
-                     schema.String('a transaction'),
-                     schema.Dollars('10.00'))
-    model.ingest_row(schema.String('bankB'),
-                     schema.String('unknownA'),
-                     schema.String('accountB'),
-                     schema.Date(2017, 1, 1),
-                     schema.String('same transaction!'),
-                     schema.Dollars('10.00'))
+    transactions = [
+        schema.Transaction(
+            'bankA',
+            'accountA',
+            'unknownB',
+             schema.Date(2017, 1, 1),
+             'a transaction',
+             Decimal('10.00')),
+        schema.Transaction(
+            'bankB',
+             'unknownA',
+             'accountB',
+             schema.Date(2017, 1, 1),
+             'same transaction!',
+             Decimal('10.00')),
+    ]
 
-    deduped = deduplicate.deduplicate(model, bank_to_accounts_map)
-    snapshot = deduped.view_snapshot()
-    assert_equals(len(snapshot), 2)
+    deduped = deduplicate.deduplicate(transactions, bank_to_accounts_map)
+    assert_equals(len(deduped), 2)
 
-    assert_in((
-        schema.String('bankA'),
-        schema.String('accountA'),
-        schema.String('unknownB'),
-        schema.Date(2017, 1, 1),
-        schema.String('a transaction'),
-        schema.Dollars('10.00')
-    ), snapshot)
+    assert_in(
+        schema.Transaction(
+            'bankA',
+            'accountA',
+            'unknownB',
+            schema.Date(2017, 1, 1),
+            'a transaction',
+            Decimal('10.00')),
+        deduped)
 
-    assert_in((
-        schema.String('bankB'),
-        schema.String('unknownA'),
-        schema.String('accountB'),
-        schema.Date(2017, 1, 1),
-        schema.String('same transaction!'),
-        schema.Dollars('10.00')
-    ), snapshot)
+    assert_in(
+        schema.Transaction(
+            'bankB',
+            'unknownA',
+            'accountB',
+            schema.Date(2017, 1, 1),
+            'same transaction!',
+            Decimal('10.00')),
+        deduped)
