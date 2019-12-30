@@ -27,19 +27,17 @@ def post_stitch(transactions):
 
 class Rules:
     def __init__(self, root):
-        self.root = root
+        self.path = os.path.join(root, 'rules.py')
 
     def write_boilerplate(self):
-        path = os.path.join(self.root, 'rules.py')
-        with atomic_write(path, mode='w', overwrite=False) as f:
+        with atomic_write(self.path, mode='w', overwrite=False) as f:
             f.write(rules_boilerplate)
 
     def exists(self):
-        return os.path.exists(self.root)
+        return os.path.exists(self.path)
 
     def get_module(self):
-        path = os.path.join(self.root, 'rules.py')
-        spec = importlib.util.spec_from_file_location('module.name', path)
+        spec = importlib.util.spec_from_file_location('module.name', self.path)
         rules = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(rules)
         return rules
