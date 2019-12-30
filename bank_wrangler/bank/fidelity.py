@@ -60,27 +60,34 @@ def _parse_ofx(fileobj):
     return parser.convert()
 
 
+def _statement_transactions(st):
+    result = []
+    acctname = str(st.invacctfrom.acctid)
+    for t in st.transactions:
+        if hasattr(t, 'total'):
+            # ignore investment buy/sell
+            continue
+        amount = t.trnamt
+        frm, to = 'Universe', acctname
+        if amount < 0:
+            frm, to = to, frm
+            amount *= -1
+        result.append(schema.Transaction(
+            name(), frm, to,
+            schema.Date(t.dtposted.year, t.dtposted.month, t.dtposted.day),
+            str(t.memo),
+            Decimal(amount),
+        ))
+    net = _networth(st)
+    add_balance_correcting_transaction(name(), acctname, net, result)
+    return result
+
+
 def transactions(fileobj):
     ofx = _parse_ofx(fileobj)
     result = []
     for st in ofx.statements:
-        acctname = str(st.invacctfrom.acctid)
-        for t in st.transactions:
-            if hasattr(t, 'total'):
-                # ignore investment buy/sell
-                continue
-            amount = t.trnamt
-            frm, to = 'Universe', acctname
-            if amount < 0:
-                frm, to = to, frm
-                amount *= -1
-            result.append(schema.Transaction(
-                name(), frm, to,
-                schema.Date(t.dtposted.year, t.dtposted.month, t.dtposted.day),
-                str(t.memo),
-                Decimal(amount),
-            ))
-        add_balance_correcting_transaction(name(), acctname, _networth(st), result)
+        result.extend(_statement_transactions(st))
     return result
 
 
