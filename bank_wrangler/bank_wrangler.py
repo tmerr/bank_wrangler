@@ -61,19 +61,11 @@ def add(name):
     _assert_initialized()
     vault = Vault(os.getcwd())
     if name in vault.keys():
-        print('fatal: config name already in use: {name}')
+        print('fatal: config name already in use: ' + name)
         sys.exit(1)
     passphrase = _promptpass()
     cfg = bank.generate_config()
     vault.put(name, cfg, passphrase)
-
-
-def _expect_valid_name(name, vault):
-    valid_names = vault.keys()
-    if not name in valid_names:
-        template = 'fatal: config must be one of: {}'
-        print(template.format(', '.join(valid_names)), file=sys.stderr)
-        sys.exit(1)
 
 
 @config.command()
@@ -82,9 +74,12 @@ def remove(name):
     """Remove a config"""
     _assert_initialized()
     vault = Vault(os.getcwd())
-    _expect_valid_name(name, vault)
     passphrase = _promptpass()
-    vault.delete(name, passphrase)
+    try:
+        vault.delete(name, passphrase)
+    except KeyError:
+        print('unknown name ' + name, file=sys.stderr)
+        sys.exit(1)
 
 
 @cli.command()
@@ -94,9 +89,12 @@ def fetch(name):
     _assert_initialized()
     iolayer = FileIO(os.getcwd())
     vault = Vault(os.getcwd())
-    _expect_valid_name(name, vault)
     passphrase = _promptpass()
-    cfg = vault.get(name, passphrase)
+    try:
+        cfg = vault.get(name, passphrase)
+    except KeyError:
+        print('unknown name ' + name, file=sys.stderr)
+        sys.exit(1)
     BankInstance(os.getcwd(), name, cfg).fetch()
 
 
