@@ -5,10 +5,6 @@ from getpass import getpass
 import os
 
 
-class BankException(Exception):
-    """Wraps any issues that are caused by bank implementation details"""
-
-
 _all_banks = [citizens, fidelity, fidelity_visa, venmo]
 
 
@@ -42,31 +38,13 @@ class BankInstance:
         self.config = config
 
     def fetch(self):
-        """
-        Fetch transactions or raise BankException.
-        """
         with atomic_write(self.path, mode='w', overwrite=True) as f:
-            try:
-                self.bank.fetch(self.config.fields, f)
-            except Exception as e:
-                raise BankException from e
+            self.bank.fetch(self.config.fields, f)
 
     def transactions(self):
-        """
-        Read transactions or raise BankException.
-        """
         with open(self.path) as f:
-            try:
-                return self.bank.transactions(f)
-            except Exception as e:
-                raise BankException from e
+            return self.bank.transactions(f)
 
     def accounts(self):
-        """
-        Read accounts or raise BankException.
-        """
         with open(self.path) as f:
-            try:
-                return self.bank.accounts(f)
-            except Exception as e:
-                raise BankException from e
+            return self.bank.accounts(f)
