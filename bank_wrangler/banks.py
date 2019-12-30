@@ -1,4 +1,8 @@
+from atomicwrites import atomic_write
 from bank_wrangler.bank import citizens, fidelity, fidelity_visa, venmo
+from bank_wrangler.config import Config
+from getpass import getpass
+import os
 
 
 class BankException(Exception):
@@ -11,14 +15,13 @@ _all_banks = [citizens, fidelity, fidelity_visa, venmo]
 def generate_config():
     """Generate a new bank config."""
     print('bank:')
-    banks = aggregate.banks()
     for i, bank in enumerate(_all_banks):
         print(f'  {i}. {bank.name()}')
     selected = None
     while selected is None:
         choice = input('choice: ')
         try:
-            selected = banks[int(choice)]
+            selected = _all_banks[int(choice)]
         except (ValueError, IndexError):
             print('try again')
     fields = []
@@ -34,8 +37,8 @@ class BankInstance:
     """An instance of a bank type."""
 
     def __init__(self, root, key, config):
-        self.path = lambda key: os.path.join(root, key + '.data')
-        self.bank =  next(b for b in _all_banks if b.name() == bank_config.bank)
+        self.path = os.path.join(root, key + '.data')
+        self.bank =  next(b for b in _all_banks if b.name() == config.bank)
         self.config = config
 
     def fetch(self):
@@ -64,6 +67,6 @@ class BankInstance:
         """
         with open(self.path) as f:
             try:
-                return m.accounts(f)
+                return self.bank.accounts(f)
             except Exception as e:
                 raise BankException from e

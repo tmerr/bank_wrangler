@@ -8,8 +8,7 @@ import click
 from bank_wrangler.config import Vault
 from bank_wrangler.config import Config
 from bank_wrangler.fileio import FileIO
-from bank_wrangler import fileio
-from bank_wrangler.banks import BankInstance
+from bank_wrangler.banks import BankInstance, generate_config
 from bank_wrangler import deduplicate, rules, schema, report
 
 
@@ -64,7 +63,7 @@ def add(name):
         print('fatal: config name already in use: ' + name)
         sys.exit(1)
     passphrase = _promptpass()
-    cfg = bank.generate_config()
+    cfg = generate_config()
     vault.put(name, cfg, passphrase)
 
 
@@ -106,7 +105,7 @@ def fetch_all():
     iolayer = FileIO(os.getcwd())
     vault = Vault(os.getcwd())
     for name in vault.keys():
-        print(f'fetching {name}... ', end='')
+        print(f'fetching {name}... ')
         cfg = vault.get(name, passphrase)
         BankInstance(os.getcwd(), name, cfg).fetch()
 
@@ -134,7 +133,11 @@ def list_transactions(name):
     if len(errs) != 0:
         print_intended('cannot parse rules file', errs)
     passphrase = _promptpass()
-    cfg = Vault(os.getcwd()).get(name, passphrase)
+    try:
+        cfg = Vault(os.getcwd()).get(name, passphrase)
+    except KeyError:
+        print('unknown name ' + name, file=sys.stderr)
+        sys.exit(1)
     transactions = BankInstance(os.getcwd(), name, cfg).transactions()
     new_transactions, errs = rules.apply(parsed, transactions)
     print(str(new_transactions))
@@ -155,7 +158,7 @@ def _list_all_transactions(root, iolayer, passphrase):
     accounts_by_bank = {}
     transactions0 = schema.TransactionModel(schema.COLUMNS)
     vault = Vault(root)
-    for key, conf in vault.get_all():
+    for key, conf in vault.get_all(passphrase).items():
         for row in BankInstance(root, key, conf).transactions():
             transactions0.ingest_row(*row)
         accounts_by_bank[conf.bank] = BankInstance(root, key, conf).accounts()
@@ -184,10 +187,11 @@ def list_all_transactions():
 def report_cmd():
     _assert_initialized()
     root = os.getcwd()
+    vault = Vault(root)
     iolayer = FileIO(root)
     passphrase = _promptpass()
     accounts = []
-    for key, cfg in vault.get_all():
+    for key, cfg in vault.get_all(passphrase).items():
         accounts.extend(BankInstance(root, key, cfg).accounts())
     transactions, errs1, errs2 = _list_all_transactions(os.getcwd(), iolayer, passphrase)
     print_indented('errors while applying rules', errs1)

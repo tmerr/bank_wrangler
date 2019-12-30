@@ -23,7 +23,6 @@ class InitializationMixin(object):
 
 class FileIO(InitializationMixin):
     def __init__(self, rootpath):
-        assert os.path.isabs(rootpath)
         self.rootpath = rootpath
 
     def _fullpath(self, filename):
@@ -52,10 +51,10 @@ class FileIO(InitializationMixin):
             with open(path, 'w') as f:
                 f.write(datastring)
 
-    def initialize(self, empty_vault):
+    def initialize(self):
         try:
             os.makedirs(self.rootpath)
         except FileExistsError:
             print(f'fatal: "{self.rootpath}" already exists', file=sys.stderr)
             sys.exit(1)
-        super().initialize(empty_vault)
+        super().initialize()

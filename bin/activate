@@ -5,7 +5,7 @@
 # Also prepares paths so the bank-wrangler command  can be executed from
 # any directory. `$ deactivate` to leave the virtual env.
 
-BINDIR="$(dirname ${BASH_SOURCE[${#BASH_SOURCE[@]} - 1]})"
+BINDIR="$(realpath $(dirname ${BASH_SOURCE[${#BASH_SOURCE[@]} - 1]}))"
 PATH=$PATH:$BINDIR
 export PYTHONPATH=$PYTHONPATH:$BINDIR/..
 if [ ! -d "$BINDIR/venv" ]; then

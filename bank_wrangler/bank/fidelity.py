@@ -31,15 +31,15 @@ def empty_config():
 
 
 def fetch(config, fileobj):
+    username, password, accts = config
     client = OFXClient(
         'https://ofx.fidelity.com/ftgw/OFX/clients/download',
+        userid=username.value,
         org='fidelity.com', fid='7776', brokerid='fidelity.com')
-    username, password, accts = config
     accts = accts.value.split(',')
     resp = client.request_statements(
-        user=username.value,
-        password=password.value,
-        invstmtrqs=[InvStmtRq(acctid=acct) for acct in accts])
+        password.value,
+        *[InvStmtRq(acctid=acct) for acct in accts])
     fileobj.write(resp.read().decode())
 
 
