@@ -10,7 +10,7 @@ import tempfile
 from bank_wrangler.bank.common import (
     FirefoxDownloadDriver,
     fidelity_login,
-    add_balance_correcting_transaction,
+    correct_balance,
 )
 from bank_wrangler.config import ConfigField
 from bank_wrangler import schema
@@ -153,9 +153,10 @@ def transactions_by_account(fileobj):
             frm, to = to, frm
         month, day, year = map(int, date.split('/'))
         result.append(schema.Transaction(
-            name(), frm, to,
+            frm,
+            to,
             schema.Date(year, month, day),
             description,
             signed_amount.copy_abs()))
-    add_balance_correcting_transaction(name(), account_name, balance, result)
+    correct_balance(account_name, balance, result)
     return {account_name: result}

@@ -74,7 +74,7 @@ def compute_balance(account, transactions):
     return result
 
 
-def add_balance_correcting_transaction(bankname, account, real_balance, transactions):
+def correct_balance(account, real_balance, transactions):
     correction = Decimal(real_balance) - compute_balance(account, transactions)
     frm, to = '', account
     if correction != 0:
@@ -82,7 +82,8 @@ def add_balance_correcting_transaction(bankname, account, real_balance, transact
             frm, to = to, frm
             correction *= -1
         transactions.append(schema.Transaction(
-            bankname, frm, to,
+            frm,
+            to,
             _oldest_transaction_date(transactions),
             'Balance correction',
             correction,

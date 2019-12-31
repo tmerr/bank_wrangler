@@ -120,14 +120,12 @@ def transactions_by_account(fileobj):
         if funding is not None and funding['name'] != 'Venmo balance':
             assert from_to[0] == account
             result.append(schema.Transaction(
-                name(),
                 '',
                 account,
                 date,
                 json.dumps({'other': funding['name'], 'note': 'fund ' + transaction['note']}),
                 Decimal(transaction['amount'])))
         result.append(schema.Transaction(
-            name(),
             from_to[0],
             from_to[1],
             date,

@@ -15,7 +15,6 @@ def stitch(transactions_by_account):
                     if len(matches) == 0:
                         del needs_match[k]
                     result.append(Transaction(
-                        'placeholder',
                         t.source,
                         t.to,
                         t.date,
@@ -42,7 +41,7 @@ def stitch(transactions_by_account):
         for (acct, t) in ts:
             # a transaction with another party involved needs a corresponding
             # transaction with opposite direction. if it does not exist, remove
-            # the reference to the other account and make not of it.
+            # the reference to the other account and make note of it.
             fmt = t.description + ' [missing corresponding txn in {}]'
             if t.source == acct:
                 t = t._replace(to='', description=fmt.format(t.to))

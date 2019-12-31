@@ -13,7 +13,7 @@ from io import BytesIO
 from decimal import Decimal
 from bank_wrangler.config import ConfigField
 from bank_wrangler import schema
-from bank_wrangler.bank.common import add_balance_correcting_transaction
+from bank_wrangler.bank.common import correct_balance
 from ofxtools.Client import OFXClient, InvStmtRq
 from ofxtools.Parser import OFXTree
 
@@ -73,13 +73,14 @@ def _statement_transactions(st):
             frm, to = to, frm
             amount *= -1
         result.append(schema.Transaction(
-            name(), frm, to,
+            frm,
+            to,
             schema.Date(t.dtposted.year, t.dtposted.month, t.dtposted.day),
             str(t.memo),
             Decimal(amount),
         ))
     net = _networth(st)
-    add_balance_correcting_transaction(name(), acctname, net, result)
+    correct_balance(acctname, net, result)
     return result
 
 

@@ -129,7 +129,7 @@ def _list_transactions(only_key=None):
                 raise ValueError('account {} defined more than once'.format(account))
             transactions_by_account[account] = r.pre_stitch(ts)
     transactions = stitch.stitch(transactions_by_account)
-    transactions = map(r.post_stitch, transactions)
+    transactions = r.post_stitch(transactions)
     return transactions, list(transactions_by_account.keys())
 
 

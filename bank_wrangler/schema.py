@@ -32,7 +32,6 @@ class Date:
 
 
 class Transaction(NamedTuple):
-    bank: str
     source: str
     to: str
     date: Date
