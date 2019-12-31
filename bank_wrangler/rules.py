@@ -6,22 +6,16 @@ import os
 rules_boilerplate = """\
 from bank_wrangler.schema import Transaction
 
-def pre_stitch(transactions):
+def pre_stitch(transaction):
     '''transformtion applied before stitching transactions together'''
-    result = []
-    for t in transactions:
-        # example rule.
-        # if t.source == 'foo':
-        #     t = t._replace(source='bar')
-        result.append(t)
-    return result
+    # example
+    # if transaction.source == 'foo':
+    #     return transaction._replace(description='bar')
+    return transaction
 
-def post_stitch(transactions):
+def post_stitch(transaction):
     '''transformation applied after stitching transactions together'''
-    result = []
-    for t in transactions:
-        result.append(t)
-    return result
+    return transaction
 """
 
 

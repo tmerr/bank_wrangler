@@ -122,9 +122,9 @@ def _list_transactions():
         for account, ts in BankInstance(root, key, conf).transactions_by_account().items():
             if account in transactions_by_account:
                 raise ValueError('account {} defined more than once'.format(account))
-            transactions_by_account[account] = r.pre_stitch(ts)
+            transactions_by_account[account] = map(r.pre_stitch, ts)
     transactions = stitch.stitch(transactions_by_account)
-    transactions = r.post_stitch(transactions)
+    transactions = map(r.post_stitch, transactions)
     return transactions, list(transactions_by_account.keys())
 
 
