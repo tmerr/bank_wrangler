@@ -110,17 +110,12 @@ def fetch_all():
     _fetch()
 
 
-def _list_transactions(only_key=None):
+def _list_transactions():
     root = os.getcwd()
     vault = Vault(root)
     _assert_initialized()
     passphrase = _promptpass()
     items = vault.get_all(passphrase).items()
-    if only_key is not None:
-        items = [(k, c) for k, c in items if k == only_key]
-        if len(items) == 0:
-            print('unknown name ' + key, file=sys.stderr)
-            sys.exit(1)
     r = Rules(root).get_module()
     transactions_by_account = {}
     for key, conf in items:
@@ -134,16 +129,8 @@ def _list_transactions(only_key=None):
 
 
 @cli.command(name='list')
-@click.argument('name')
-def list_transactions(name):
+def list_transactions():
     """List transactions"""
-    transactions = _list_transactions(only_key=name)[0]
-    print(tabulate(transactions, headers=schema.Transaction._fields))
-
-
-@cli.command(name='list-all')
-def list_all_transactions():
-    """List all transactions"""
     transactions = _list_transactions()[0]
     print(tabulate(transactions, headers=schema.Transaction._fields))
 
