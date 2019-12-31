@@ -42,11 +42,11 @@ def stitch(transactions_by_account):
             # a transaction with another party involved needs a corresponding
             # transaction with opposite direction. if it does not exist, remove
             # the reference to the other account and make note of it.
-            fmt = t.description + ' [missing corresponding txn in {}]'
+            fmt = '{} [missing corresponding txn in {}]'
             if t.source == acct:
-                t = t._replace(to='', description=fmt.format(t.to))
+                t = t._replace(to='', description=fmt.format(t.description, t.to))
             elif t.to == acct:
-                t = t._replace(source='', description=fmt.format(t.source))
+                t = t._replace(source='', description=fmt.format(t.description, t.source))
             else:
                 assert False
             result.append(t)
