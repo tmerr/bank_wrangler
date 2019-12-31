@@ -50,16 +50,6 @@ def _networth(statement):
     raise ValueError('could not find net worth of {}'.format(statement))
 
 
-def _parse_ofx(fileobj):
-    munged = BytesIO(fileobj.read()
-        # fix missing character in ofx header
-        .replace('?<OFX>', '?><OFX>')
-        .encode('utf-8'))
-    parser = OFXTree()
-    parser.parse(munged)
-    return parser.convert()
-
-
 def _statement_transactions(st):
     result = []
     acctname = str(st.invacctfrom.acctid)
@@ -85,7 +75,9 @@ def _statement_transactions(st):
 
 
 def transactions_by_account(fileobj):
-    ofx = _parse_ofx(fileobj)
+    parser = OFXTree()
+    parser.parse(fileobj.buffer)
+    ofx = parser.convert()
     result = {}
     for st in ofx.statements:
         result[str(st.invacctfrom.acctid)] = _statement_transactions(st)
