@@ -76,7 +76,7 @@ def compute_balance(account, transactions):
 
 def add_balance_correcting_transaction(bankname, account, real_balance, transactions):
     correction = Decimal(real_balance) - compute_balance(account, transactions)
-    frm, to = 'Universe', account
+    frm, to = '', account
     if correction != 0:
         if correction < 0:
             frm, to = to, frm

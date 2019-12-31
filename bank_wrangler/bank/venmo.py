@@ -78,7 +78,7 @@ def fetch(config, fileobj):
     fileobj.write(pre)
 
 
-def transactions(fileobj):
+def transactions_by_account(fileobj):
     result = []
     account = fileobj.readline().rstrip('\n')
     data = json.load(fileobj, parse_float=Decimal)['data']
@@ -89,31 +89,49 @@ def transactions(fileobj):
     assert data['start_balance'] == 0
 
     for transaction in data['transactions']:
-        date, _ = transaction['datetime_created'].split('T')
-        year, month, day = map(int, date.split('-'))
-        a = transaction['payment']['actor']['username']
-        b = transaction['payment']['target']['user']['username']
-        action = transaction['payment']['action']
-        if action == 'pay':
-            from_to = [a, b]
+        date_string, _ = transaction['datetime_created'].split('T')
+        date = schema.Date(*map(int, date_string.split('-')))
+        if transaction['payment'] is not None:
+            a = transaction['payment']['actor']['username']
+            b = transaction['payment']['target']['user']['username']
+            action = transaction['payment']['action']
+            if a == account:
+                other = b
+                b = ''
+            elif b == account:
+                other = a
+                a = ''
+            else:
+                assert False
+            if action == 'pay':
+                from_to = [a, b]
+            else:
+                assert action == 'charge'
+                from_to = [b, a]
+        elif transaction['capture'] is not None:
+            assert transaction['capture']['authorization']['user']['username'] == account
+            transaction['note'] = transaction['capture']['authorization']['descriptor']
+            other = transaction['note']
+            from_to = [account, '']
         else:
-            assert action == 'charge'
-            from_to = [b, a]
+            assert False
+
         funding = transaction.get('funding_source')
         if funding is not None and funding['name'] != 'Venmo balance':
+            assert from_to[0] == account
             result.append(schema.Transaction(
-                name(), funding['name'], from_to[0],
-                schema.Date(year, month, day),
-                'fund {}'.format(transaction['note']),
+                name(),
+                '',
+                account,
+                date,
+                json.dumps({'other': funding['name'], 'note': 'fund ' + transaction['note']}),
                 Decimal(transaction['amount'])))
         result.append(schema.Transaction(
-            name(), from_to[0], from_to[1],
-            schema.Date(year, month, day),
-            transaction['note'],
+            name(),
+            from_to[0],
+            from_to[1],
+            date,
+            json.dumps({'other': other, 'note': transaction['note']}),
             Decimal(transaction['amount'])))
     assert compute_balance(account, result) == data['end_balance']
-    return result
-
-
-def accounts(fileobj):
-    return {fileobj.readline().rstrip('\n')}
+    return {account: result}

@@ -10,7 +10,7 @@ from bank_wrangler.rules import Rules
 from bank_wrangler.config import Vault
 from bank_wrangler.config import Config
 from bank_wrangler.banks import BankInstance, generate_config
-from bank_wrangler import deduplicate, rules, schema, report
+from bank_wrangler import stitch, rules, schema, report
 
 
 def _assert_initialized():
@@ -121,16 +121,16 @@ def _list_transactions(only_key=None):
         if len(items) == 0:
             print('unknown name ' + key, file=sys.stderr)
             sys.exit(1)
-    transactions = []
-    accounts_by_bank = {}
-    for key, conf in items:
-        transactions.extend(BankInstance(root, key, conf).transactions())
-        accounts_by_bank[conf.bank] = BankInstance(root, key, conf).accounts()
     r = Rules(root).get_module()
-    transactions = r.pre_stitch(transactions)
-    transactions = deduplicate.deduplicate(transactions, accounts_by_bank)
-    transactions = r.post_stitch(transactions)
-    return transactions, accounts_by_bank
+    transactions_by_account = {}
+    for key, conf in items:
+        for account, ts in BankInstance(root, key, conf).transactions_by_account().items():
+            if account in transactions_by_account:
+                raise ValueError('account {} defined more than once'.format(account))
+            transactions_by_account[account] = r.pre_stitch(ts)
+    transactions = stitch.stitch(transactions_by_account)
+    transactions = map(r.post_stitch, transactions)
+    return transactions, list(transactions_by_account.keys())
 
 
 @cli.command(name='list')
@@ -150,8 +150,7 @@ def list_all_transactions():
 
 @cli.command(name='report')
 def report_cmd():
-    transactions, accounts_by_bank = _list_transactions()
-    accounts = chain(*accounts_by_bank.values())
+    transactions, accounts = _list_transactions()
     report.generate(os.getcwd(), transactions, accounts)
 
 

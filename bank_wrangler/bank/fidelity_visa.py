@@ -137,14 +137,14 @@ def fetch(config, fileobj):
             shutil.copyfileobj(csv_file, fileobj)
 
 
-def transactions(fileobj):
+def transactions_by_account(fileobj):
     account_name = fileobj.readline().rstrip('\n')
     balance = Decimal(fileobj.readline().rstrip('\n'))
     result = []
     lines = list(csv.reader(fileobj))[1:]
     for date, transaction_type, description, _, signed_amount_str in lines:
         signed_amount = Decimal(signed_amount_str.replace(',', ''))
-        frm, to = 'Universe', account_name
+        frm, to = '', account_name
         if signed_amount > 0:
             assert transaction_type == 'CREDIT'
         else:
@@ -158,8 +158,4 @@ def transactions(fileobj):
             description,
             signed_amount.copy_abs()))
     add_balance_correcting_transaction(name(), account_name, balance, result)
-    return result
-
-
-def accounts(fileobj):
-    return {fileobj.readline().rstrip('\n')}
+    return {account_name: result}

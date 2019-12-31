@@ -41,10 +41,6 @@ class BankInstance:
         with atomic_write(self.path, mode='w', overwrite=True) as f:
             self.bank.fetch(self.config.fields, f)
 
-    def transactions(self):
+    def transactions_by_account(self):
         with open(self.path) as f:
-            return self.bank.transactions(f)
-
-    def accounts(self):
-        with open(self.path) as f:
-            return self.bank.accounts(f)
+            return self.bank.transactions_by_account(f)

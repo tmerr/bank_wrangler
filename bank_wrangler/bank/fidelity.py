@@ -68,7 +68,7 @@ def _statement_transactions(st):
             # ignore investment buy/sell
             continue
         amount = t.trnamt
-        frm, to = 'Universe', acctname
+        frm, to = '', acctname
         if amount < 0:
             frm, to = to, frm
             amount *= -1
@@ -83,14 +83,9 @@ def _statement_transactions(st):
     return result
 
 
-def transactions(fileobj):
+def transactions_by_account(fileobj):
     ofx = _parse_ofx(fileobj)
-    result = []
+    result = {}
     for st in ofx.statements:
-        result.extend(_statement_transactions(st))
+        result[str(st.invacctfrom.acctid)] = _statement_transactions(st)
     return result
-
-
-def accounts(fileobj):
-    ofx = _parse_ofx(fileobj)
-    return [st.invacctfrom.acctid for st in ofx.statements]
