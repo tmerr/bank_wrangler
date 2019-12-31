@@ -7,24 +7,21 @@ def stitch(transactions_by_account):
     needs_match = defaultdict(list)
     for acct, ts in transactions_by_account.items():
         for t in ts:
-            try:
-                k = (t.source, t.to, t.date, t.amount)
-                if k in needs_match:
-                    matches = needs_match[k]
-                    (matchact, match) = matches.pop()
-                    if len(matches) == 0:
-                        del needs_match[k]
-                    result.append(Transaction(
-                        t.source,
-                        t.to,
-                        t.date,
-                        '{} + {}'.format(t.description, match.description),
-                        t.amount,
-                        t.category,
-                    ))
-                    continue
-            except IndexError:
-                pass
+            k = (t.source, t.to, t.date, t.amount)
+            if k in needs_match:
+                matches = needs_match[k]
+                (_, match) = matches.pop()
+                if len(matches) == 0:
+                    del needs_match[k]
+                result.append(Transaction(
+                    t.source,
+                    t.to,
+                    t.date,
+                    '{} + {}'.format(t.description, match.description),
+                    t.amount,
+                    t.category,
+                ))
+                continue
             if t.source == acct:
                 other = t.to
             elif t.to == acct:
