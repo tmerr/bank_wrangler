@@ -8,4 +8,4 @@ pycryptodome==3.9.4
 rncryptor==3.3.0
 selenium==3.141.0
 tabulate==0.8.6
-urllib3==1.25.7
+urllib3==1.25.8
